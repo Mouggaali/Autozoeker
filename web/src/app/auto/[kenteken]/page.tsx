@@ -11,6 +11,7 @@ import { fmtDuration, registrationHistory } from "@/lib/engines/registration";
 import { residualFactor } from "@/lib/engines/valuation";
 import { formatPlate, parseVehicleKey } from "@/lib/plate";
 import { buildReport, loadBundle } from "@/lib/report";
+import { TRANSMISSION_LABEL, effectiveTransmission, parseTransmission } from "@/lib/transmission";
 
 const toneCls = { neutral: "bg-brand", good: "bg-good", warn: "bg-warn", bad: "bg-bad" } as const;
 const riskCls = { high: "bg-bad-soft text-bad", medium: "bg-warn-soft text-warn", low: "bg-brand-soft text-brand" } as const;
@@ -51,6 +52,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
   const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
   const price = Number(first(sp.prijs)) || undefined;
   const km = Number(first(sp.km)) || undefined;
+  const transmissionInput = parseTransmission(first(sp.transmissie));
 
   let loaded;
   try { loaded = await loadBundle(key.value); } catch {
@@ -64,12 +66,14 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
     );
   }
 
-  const r = buildReport(loaded.bundle, { askingPrice: price, mileage: km });
+  const r = buildReport(loaded.bundle, { askingPrice: price, mileage: km, transmission: transmissionInput });
   const { bundle, score, nl } = r;
   const v = bundle.vehicle;
+  const transmission = effectiveTransmission(v, transmissionInput);
   const qs = new URLSearchParams();
   if (price) qs.set("prijs", String(price));
   if (km) qs.set("km", String(km));
+  if (transmission) qs.set("transmissie", transmission);
   const summaryQuery = new URLSearchParams({ kenteken: v.kenteken, ...Object.fromEntries(qs) }).toString();
 
   const curve = v.catalogusprijs
@@ -85,17 +89,24 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         <div>
           <span className="plate inline-block px-4 py-1 text-lg">{formatPlate(v.kenteken)}</span>
           <h1 className="mt-3 text-2xl font-extrabold sm:text-3xl">{v.merk} {v.model}</h1>
-          <p className="text-muted">{[v.uitvoering && `uitvoering ${v.uitvoering}`, v.bouwjaar, v.brandstoffen.join(" / "), v.vermogenKw && `${Math.round(v.vermogenKw * 1.35962)} pk (${v.vermogenKw} kW)`, v.kleur].filter(Boolean).join(" · ")}</p>
+          <p className="text-muted">{[v.uitvoering && `uitvoering ${v.uitvoering}`, v.bouwjaar, v.brandstoffen.join(" / "), v.vermogenKw && `${Math.round(v.vermogenKw * 1.35962)} pk (${v.vermogenKw} kW)`, transmission && TRANSMISSION_LABEL[transmission], v.kleur].filter(Boolean).join(" · ")}</p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             <span className="rounded-full bg-good-soft px-2 py-1 font-semibold text-good">Bron: RDW (live)</span>
             <span className="rounded-full bg-line px-2 py-1 text-muted">{loaded.cached ? "uit cache" : "zojuist opgehaald"}</span>
             {v.apkVervaldatum && <span className={`rounded-full px-2 py-1 font-semibold ${new Date(v.apkVervaldatum) < new Date() ? "bg-bad-soft text-bad" : "bg-brand-soft text-brand"}`}>APK t/m {fmt(v.apkVervaldatum)}</span>}
             {bundle.odometer.verdict !== "Onbekend" && <span className={`rounded-full px-2 py-1 font-semibold ${bundle.odometer.verdict === "Logisch" ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>Tellerstand: {bundle.odometer.verdict.toLowerCase()}</span>}
           </div>
-          <details className="mt-4 text-sm"><summary className="cursor-pointer text-brand">Vraagprijs of kilometerstand aanpassen</summary>
+          <details className="mt-4 text-sm"><summary className="cursor-pointer text-brand">Vraagprijs, kilometerstand of transmissie aanpassen</summary>
             <form method="get" className="mt-2 flex flex-wrap gap-2">
               <input name="prijs" defaultValue={price} placeholder="Vraagprijs €" inputMode="numeric" className="w-36 rounded-lg border border-line bg-bg px-3 py-2" />
               <input name="km" defaultValue={km} placeholder="Kilometerstand" inputMode="numeric" className="w-40 rounded-lg border border-line bg-bg px-3 py-2" />
+              {!v.isElektrisch && (
+                <select name="transmissie" defaultValue={transmission ?? ""} aria-label="Transmissie" className="rounded-lg border border-line bg-bg px-3 py-2">
+                  <option value="">Transmissie onbekend</option>
+                  <option value="handgeschakeld">Handgeschakeld</option>
+                  <option value="automaat">Automaat</option>
+                </select>
+              )}
               <button className="rounded-lg bg-brand px-4 py-2 font-semibold text-white">Herbereken</button>
             </form>
           </details>
@@ -240,7 +251,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         </Card>
       )}
 
-      <MarketTabs kenteken={v.kenteken} nl={r.nl} de={r.de} importCost={r.importCost} links={r.links} askingPrice={price} mileage={km} />
+      <MarketTabs kenteken={v.kenteken} nl={r.nl} de={r.de} importCost={r.importCost} links={r.links} askingPrice={price} mileage={km} transmission={transmission} />
 
       {/* BPM */}
       <Card title="BPM" subtitle="Aanschafbelasting: wat er werkelijk is betaald, volgens het RDW-register">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { summarize } from "@/lib/ai";
 import { parseVehicleKey } from "@/lib/plate";
 import { buildReport, loadBundle } from "@/lib/report";
+import { parseTransmission } from "@/lib/transmission";
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -11,6 +12,6 @@ export async function GET(req: NextRequest) {
   if (!loaded) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
   const price = Number(sp.get("prijs"));
   const km = Number(sp.get("km"));
-  const report = buildReport(loaded.bundle, { askingPrice: price > 0 ? price : undefined, mileage: km > 0 ? km : undefined });
+  const report = buildReport(loaded.bundle, { askingPrice: price > 0 ? price : undefined, mileage: km > 0 ? km : undefined, transmission: parseTransmission(sp.get("transmissie")) });
   return NextResponse.json(await summarize(report));
 }

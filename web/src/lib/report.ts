@@ -39,8 +39,8 @@ export const SOURCES: SourceRef[] = [
 
 export function buildReport(bundle: RdwBundle, input: UserInputs) {
   const v = bundle.vehicle;
-  const nl = estimateValue(v, input.mileage, "NL");
-  const de = estimateValue(v, input.mileage, "DE");
+  const nl = estimateValue(v, input.mileage, "NL", input.transmission);
+  const de = estimateValue(v, input.mileage, "DE", input.transmission);
   const bpm = calcBpm(v);
   const importCost = de.mid != null ? estimateImport(v, de.mid, nl.mid) : null;
   const ownInputs = defaultInputs(v, nl.mid);
@@ -59,6 +59,7 @@ export function buildReport(bundle: RdwBundle, input: UserInputs) {
     score,
     links: searchLinks(v),
     sources: SOURCES,
+    input,
   };
 }
 export type Report = ReturnType<typeof buildReport>;

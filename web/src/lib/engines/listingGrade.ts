@@ -1,4 +1,4 @@
-import type { GradedListing, Listing, RdwBundle } from "../types";
+import type { GradedListing, Listing, RdwBundle, TransmissionGroup } from "../types";
 import { calcOwnership, defaultInputs, ownershipFacts } from "./ownership";
 import { calcScore } from "./score";
 import { estimateValue } from "./valuation";
@@ -13,6 +13,8 @@ export interface GradeStats {
   count: number;
   medianPrice: number | null; // mediaan effectieve prijs (DE incl. importkosten)
   medianMileage: number | null;
+  /** Transmissie waarbinnen de mediaan is bepaald; null = alle advertenties */
+  comparedTransmission: TransmissionGroup | null;
 }
 
 /**
@@ -22,17 +24,22 @@ export interface GradeStats {
  * een kenteken bestaan (APK-historie, tellerstandoordeel, terugroepacties, export/taxi) zijn bij een
  * advertentie onbekend en tellen dus niet mee; ze verlagen alleen de betrouwbaarheid.
  * Het cijfer beoordeelt de auto zoals geadverteerd, niet de technische staat.
+ * Is de transmissie van de eigen auto bekend, dan wordt de mediaan alleen over advertenties met
+ * dezelfde transmissie bepaald (automaten zijn duurder dan handbakken).
  */
 export function gradeListings(
   bundle: RdwBundle,
   listings: Listing[],
   importExtras: number,
-  ref: { price?: number; km?: number } = {},
+  ref: { price?: number; km?: number; transmission?: TransmissionGroup } = {},
   now = new Date(),
 ): { graded: GradedListing[]; stats: GradeStats } {
   const eff = (l: Listing) => l.price + (l.country === "DE" ? importExtras : 0);
-  const kms = listings.map((l) => l.mileage).filter((x): x is number => x != null && x > 0);
-  const medP = listings.length >= 3 ? median(listings.map(eff)) : null;
+  const same = ref.transmission ? listings.filter((l) => l.transmissionGroup === ref.transmission) : [];
+  const peers = same.length >= 3 ? same : listings;
+  const comparedTransmission = peers === same ? ref.transmission! : null;
+  const kms = peers.map((l) => l.mileage).filter((x): x is number => x != null && x > 0);
+  const medP = peers.length >= 3 ? median(peers.map(eff)) : null;
   const medK = kms.length >= 3 ? median(kms) : null;
   const base = bundle.vehicle;
 
@@ -43,9 +50,9 @@ export function gradeListings(
 
   const graded = listings.map((l): GradedListing => {
     if (isSame(l)) {
-      const nl = estimateValue(base, ref.km, "NL");
+      const nl = estimateValue(base, ref.km, "NL", ref.transmission);
       const own = calcOwnership(ownershipFacts(base), defaultInputs(base, nl.mid));
-      const score = calcScore(bundle, nl, own, { askingPrice: ref.price, mileage: ref.km });
+      const score = calcScore(bundle, nl, own, { askingPrice: ref.price, mileage: ref.km, transmission: ref.transmission });
       const eff0 = eff(l);
       return {
         ...l,
@@ -71,17 +78,22 @@ export function gradeListings(
     const b = { ...bundle, vehicle, inspections: [], recalls: [], odometer: { verdict: "Onbekend" as const, lastYear: null, explanation: "" } };
     const effectivePrice = eff(l);
     const km = l.mileage ?? undefined;
-    const nl = estimateValue(vehicle, km, "NL");
+    const tr = l.transmissionGroup ?? undefined;
+    const nl = estimateValue(vehicle, km, "NL", tr);
     const own = calcOwnership(ownershipFacts(vehicle), defaultInputs(vehicle, nl.mid));
-    const score = calcScore(b, nl, own, { askingPrice: effectivePrice, mileage: km });
+    const score = calcScore(b, nl, own, { askingPrice: effectivePrice, mileage: km, transmission: tr });
 
     const reasons: string[] = [];
     const flags: string[] = [];
     const market = score.components.find((c) => c.id === "market");
     if (market?.reasons[0]) reasons.push(market.reasons[0].replace("de geschatte marktwaarde", "de modelwaarde"));
-    if (medP) {
+    const otherTransmission = comparedTransmission != null && l.transmissionGroup !== comparedTransmission;
+    if (otherTransmission) {
+      reasons.push(l.transmissionGroup ? `andere transmissie (${l.transmissionGroup}): niet meegeteld in de mediaan` : "transmissie onbekend: niet meegeteld in de mediaan");
+    } else if (medP) {
+      const peersLabel = comparedTransmission ? `gevonden ${comparedTransmission === "automaat" ? "automaten" : "handgeschakelde auto's"}` : "gevonden auto's";
       const pct = Math.round(Math.abs(effectivePrice / medP - 1) * 100);
-      reasons.push(pct < 3 ? "in lijn met de mediaan van de gevonden auto's" : `${pct}% ${effectivePrice > medP ? "boven" : "onder"} de mediaan van de gevonden auto's${l.country === "DE" ? " (incl. import)" : ""}`);
+      reasons.push(pct < 3 ? `in lijn met de mediaan van de ${peersLabel}` : `${pct}% ${effectivePrice > medP ? "boven" : "onder"} de mediaan van de ${peersLabel}${l.country === "DE" ? " (incl. import)" : ""}`);
       if (effectivePrice / medP < 0.65) flags.push("Opvallend goedkoop: wees alert op fraude of verborgen gebreken");
     }
     if (l.mileage == null) flags.push("Kilometerstand onbekend");
@@ -105,5 +117,5 @@ export function gradeListings(
   });
 
   graded.sort((a, b) => b.grade - a.grade);
-  return { graded, stats: { count: listings.length, medianPrice: medP, medianMileage: medK } };
+  return { graded, stats: { count: peers.length, medianPrice: medP, medianMileage: medK, comparedTransmission } };
 }

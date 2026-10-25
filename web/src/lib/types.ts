@@ -85,9 +85,12 @@ export interface RdwBundle {
   fetchedAt: string;
 }
 
+export type TransmissionGroup = "handgeschakeld" | "automaat";
+
 export interface UserInputs {
   askingPrice?: number;
   mileage?: number;
+  transmission?: TransmissionGroup; // ingevoerd door de gebruiker; niet in de RDW-open data
 }
 
 export interface TimelineEvent {
@@ -110,6 +113,7 @@ export interface Listing {
   fuelGroup?: string | null;
   body?: string | null;
   transmission: string | null;
+  transmissionGroup?: TransmissionGroup | null;
   power: string | null;
   location: string | null;
   url: string;
@@ -195,4 +199,5 @@ export interface ListingFilters {
   kmTo: number | null;
   body: BodyGroup | null; // null = alle
   fuel: FuelGroup | null; // null = alle
+  transmission: TransmissionGroup | null; // null = alle
 }

@@ -8,7 +8,7 @@ import type { Report } from "./report";
 export async function summarize(r: Report): Promise<{ text: string; source: "ai" | "rule-based" }> {
   const v = r.bundle.vehicle;
   const facts = {
-    voertuig: `${v.merk} ${v.model} (${v.bouwjaar ?? "?"}), ${v.brandstoffen.join("/")}`,
+    voertuig: `${v.merk} ${v.model} (${v.bouwjaar ?? "?"}), ${v.brandstoffen.join("/")}${r.input.transmission ? `, ${r.input.transmission}` : ""}`,
     score: r.score.overall,
     betrouwbaarheid_score: r.score.confidenceLabel,
     onderdelen: r.score.components.map((c) => ({ naam: c.label, score: c.score, redenen: c.reasons })),

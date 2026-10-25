@@ -4,6 +4,7 @@ Invoer (stdin, JSON): {"make": "BMW", "model": "I3", "limit": 12,
                        "year_from": 2018, "year_to": 2020, "km_from": null, "km_to": 90000,
                        "body": "hatchback"|"stationwagon"|"sedan"|"suv"|"mpv"|"coupe"|"cabrio"|null,
                        "fuel": "benzine"|"diesel"|"hybride"|"elektrisch"|null,
+                       "transmission": "handgeschakeld"|"automaat"|null,
                        "sources": ["marktplaats", "autoscout24_nl", "autoscout24_de"]}
 Uitvoer (stdout, JSON): {"listings": [...], "errors": {"bron": "melding"}}
 
@@ -36,6 +37,7 @@ UA = (
 )
 # Filtergroepen -> AutoScout24-codes (hybride heeft twee codes en vraagt dus twee zoekopdrachten)
 FUEL_GROUP_AS24 = {"benzine": ["B"], "diesel": ["D"], "elektrisch": ["E"], "hybride": ["2", "3"]}
+GEAR_AS24 = {"handgeschakeld": "M", "automaat": "A"}
 BODY_AS24 = {"hatchback": "1", "cabrio": "2", "coupe": "3", "suv": "4", "sedan": "5", "stationwagon": "6", "mpv": "7"}
 FUEL_NAMES = {
     "b": "Benzine", "d": "Diesel", "e": "Elektrisch", "2": "Hybride (benzine)", "3": "Hybride (diesel)",
@@ -61,6 +63,16 @@ def fuel_group(name: str | None) -> str | None:
     if "benz" in n:
         return "benzine"
     return "overig" if n else None
+
+
+def transmission_group(name: str | None) -> str | None:
+    """'Automaat', 'Automatisch', 'Automatik', 'Halbautomatik' -> automaat; 'Handgeschakeld', 'Schaltgetriebe' -> handgeschakeld."""
+    n = (name or "").lower()
+    if re.search(r"auto|dsg|cvt|semi", n):
+        return "automaat"
+    if re.search(r"hand|schalt|manu", n):
+        return "handgeschakeld"
+    return None
 
 
 def body_group(name: str | None) -> str | None:
@@ -98,6 +110,7 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
         km = to_int(attrs.get("mileage"))
         body = body_group(attrs.get("body"))
         fg = fuel_group(attrs.get("fuel"))
+        tg = transmission_group(attrs.get("transmission"))
         # Alleen echte auto's van dit model: titel of model-attribuut moet het model bevatten
         hay = f"{l.title} {attrs.get('model', '')}".lower()
         if model and model.lower().split()[0] not in hay:
@@ -116,6 +129,8 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
             continue
         if f.get("fuel") and fg != f["fuel"]:
             continue
+        if f.get("transmission") and tg != f["transmission"]:
+            continue
         out.append(
             {
                 "id": f"mp-{l.id}",
@@ -129,6 +144,7 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
                 "fuelGroup": fg,
                 "body": body,
                 "transmission": attrs.get("transmission"),
+                "transmissionGroup": tg,
                 "power": None,
                 "location": l.location.city if getattr(l.location, "city", None) else None,
                 "url": l.link,
@@ -156,6 +172,8 @@ def autoscout24(country: str, make: str, model: str, f: dict) -> list[dict]:
         base["kmto"] = f["km_to"]
     if f.get("body") in BODY_AS24:
         base["body"] = BODY_AS24[f["body"]]
+    if f.get("transmission") in GEAR_AS24:
+        base["gear"] = GEAR_AS24[f["transmission"]]
     fuels = FUEL_GROUP_AS24.get(f.get("fuel") or "", [None])
     url = f"https://{host}/lst/{slug(make)}/{slug(model)}"
     out: list[dict] = []
@@ -181,6 +199,11 @@ def _parse_as24(html: str, country: str, host: str, detail: str, make: str, mode
         g = re.search(r"([0-9a-f]{8}-[0-9a-f-]{27})$", p.rstrip("/"))
         if g:
             paths[g.group(1)] = p
+    # Transmissie per advertentie staat in dezelfde JSON: ...-<guid>","vehicle":{...,"transmission":"Automatisch",...}
+    gears = {
+        m.group(1): m.group(2)
+        for m in re.finditer(r'([0-9a-f]{8}-[0-9a-f-]{27})","vehicle":\{[^}]*?"transmission":"([^"]*)"', html)
+    }
     soup = BeautifulSoup(html, "html.parser")
     out = []
     for a in soup.select("article[data-guid]"):
@@ -209,7 +232,9 @@ def _parse_as24(html: str, country: str, host: str, detail: str, make: str, mode
                 "fuel": FUEL_NAMES.get(fcode, a.get("data-fuel-type")),
                 "fuelGroup": fuel_group(FUEL_NAMES.get(fcode)),
                 "body": f.get("body"),  # alleen bekend als er op carrosserie is gefilterd
-                "transmission": None,
+                "transmission": gears.get(guid),
+                # Valt terug op het filter: AutoScout24 heeft dan al op transmissie geselecteerd
+                "transmissionGroup": transmission_group(gears.get(guid)) or f.get("transmission"),
                 "power": pw.get_text(" ", strip=True) if pw else None,
                 "location": location,
                 "url": f"https://{host}{paths.get(guid, f'/{detail}/{guid}')}",
@@ -223,7 +248,7 @@ def main() -> None:
     req = json.load(sys.stdin)
     make, model = req["make"], req["model"]
     limit = int(req.get("limit", 12))
-    filters = {k: req.get(k) for k in ("year_from", "year_to", "km_from", "km_to", "body", "fuel")}
+    filters = {k: req.get(k) for k in ("year_from", "year_to", "km_from", "km_to", "body", "fuel", "transmission")}
     sources = req.get("sources", ["marktplaats", "autoscout24_nl", "autoscout24_de"])
     yf, yt = filters["year_from"], filters["year_to"]
     mid_year = (yf + yt) / 2 if yf and yt else None

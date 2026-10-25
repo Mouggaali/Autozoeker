@@ -4,6 +4,7 @@ import { estimateImport, estimateValue } from "@/lib/engines/valuation";
 import { defaultFilters, fetchListings } from "@/lib/providers/listings";
 import { parseVehicleKey } from "@/lib/plate";
 import { loadBundle } from "@/lib/report";
+import { TRANSMISSIONS, effectiveTransmission, parseTransmission } from "@/lib/transmission";
 import type { BodyGroup, FuelGroup, ListingFilters } from "@/lib/types";
 
 export const maxDuration = 60;
@@ -13,8 +14,9 @@ const FUELS: FuelGroup[] = ["benzine", "diesel", "hybride", "elektrisch"];
 
 /**
  * Vergelijkbare advertenties + cijfers.
- * /api/listings?kenteken=G001BB[&yearFrom=&yearTo=&kmFrom=&kmTo=&body=hatchback|alle&fuel=benzine|alle]
- * Zonder parameters gelden de standaardfilters (zelfde brandstof/carrosserie, bouwjaar ±1).
+ * /api/listings?kenteken=G001BB[&transmissie=automaat][&yearFrom=&yearTo=&kmFrom=&kmTo=&body=hatchback|alle&fuel=benzine|alle&transmission=automaat|alle]
+ * `transmissie` is de transmissie van de eigen auto; `transmission` is het filter.
+ * Zonder filterparameters gelden de standaardfilters (zelfde brandstof en transmissie, bouwjaar ±1).
  */
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
@@ -23,8 +25,9 @@ export async function GET(req: NextRequest) {
   const loaded = await loadBundle(key.value);
   if (!loaded) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
   const v = loaded.bundle.vehicle;
+  const ownTransmission = effectiveTransmission(v, parseTransmission(sp.get("transmissie")));
 
-  const def = defaultFilters(v);
+  const def = defaultFilters(v, ownTransmission);
   const num = (name: string, fallback: number | null) => {
     if (!sp.has(name)) return fallback;
     const n = Number(sp.get(name));
@@ -42,6 +45,7 @@ export async function GET(req: NextRequest) {
     kmTo: num("kmTo", def.kmTo),
     body: pick("body", BODIES, def.body),
     fuel: pick("fuel", FUELS, def.fuel),
+    transmission: pick("transmission", TRANSMISSIONS, def.transmission),
   };
 
   try {
@@ -52,6 +56,7 @@ export async function GET(req: NextRequest) {
     const { graded, stats } = gradeListings(loaded.bundle, res.listings, extras, {
       price: Number(sp.get("refPrice")) || undefined,
       km: Number(sp.get("refKm")) || undefined,
+      transmission: ownTransmission,
     });
     return NextResponse.json({ listings: graded, stats, filters, importExtras: extras, errors: res.errors, fetchedAt: res.fetchedAt, cached: res.cached });
   } catch (e) {

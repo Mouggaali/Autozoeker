@@ -10,3 +10,4 @@ node_modules/
 .next/
 web/.data/
 *.tsbuildinfo
+.claude/

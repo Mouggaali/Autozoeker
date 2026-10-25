@@ -14,6 +14,7 @@ export function calcScore(
   input: UserInputs,
 ): ScoreResult {
   const v = b.vehicle;
+  const transmission = v.isElektrisch ? "automaat" : input.transmission;
   const risks: ScoreResult["risks"] = [];
   const checks: string[] = [];
   const comps: ScoreComponent[] = [];
@@ -55,6 +56,17 @@ export function calcScore(
     }
     if (b.recalls.length && !open.length) reasons.push(`${b.recalls.length} terugroepactie(s) in het verleden, herstel gemeld.`);
     if (v.isDiesel && age > 7) { s -= 0.5; reasons.push("Diesel van middelbare leeftijd: DPF/EGR/AdBlue-gevoelig bij stadsgebruik."); }
+    if (transmission === "automaat" && !v.isElektrisch) {
+      const km = input.mileage ?? 0;
+      if (age > 8 || km > 150000) {
+        s -= 0.7; reasons.push("Automaat op leeftijd of met hoge kilometerstand: reparatie van de versnellingsbak kan duizenden euro's kosten.");
+        risks.push({ level: "medium", text: "Oudere automaat: vraag naar onderhoud van de versnellingsbak (olie verversen) en let op schokken of slippen tijdens de proefrit." });
+      } else reasons.push("Automaat: let op tijdig onderhoud van de versnellingsbak.");
+      checks.push("Vraag of de olie van de automatische versnellingsbak volgens schema is ververst.");
+    } else if (transmission === "handgeschakeld" && (age > 8 || (input.mileage ?? 0) > 150000)) {
+      reasons.push("Handgeschakeld: koppeling is een slijtagedeel; vraag wanneer die is vervangen.");
+      checks.push("Controleer de koppeling (aangrijppunt, slippen bij optrekken) en vraag of die al is vervangen.");
+    } else if (!transmission) reasons.push("Transmissie niet opgegeven; versnellingsbakrisico niet beoordeeld.");
     reasons.push("Merk-/modelspecifieke betrouwbaarheidsdata is niet gekoppeld; score is algemeen.");
     comps.push({ id: "reliability", label: "Betrouwbaarheid & mechanische risico's", weight: 0.2, score: clamp(s), reasons });
   }
@@ -67,7 +79,7 @@ export function calcScore(
       const ratio = input.askingPrice / nl.mid;
       s = clamp(10 - (ratio - 0.9) * 12, 1, 10);
       if (ratio <= 0.9) s = 10;
-      reasons.push(`Vraagprijs € ${input.askingPrice.toLocaleString("nl-NL")} is ${(Math.abs(ratio - 1) * 100).toFixed(0)}% ${ratio > 1 ? "boven" : "onder"} de geschatte marktwaarde (€ ${nl.mid.toLocaleString("nl-NL")}).`);
+      reasons.push(`Vraagprijs € ${input.askingPrice.toLocaleString("nl-NL")} is ${(Math.abs(ratio - 1) * 100).toFixed(0)}% ${ratio > 1 ? "boven" : "onder"} de geschatte marktwaarde (€ ${nl.mid.toLocaleString("nl-NL")}${transmission && !v.isElektrisch ? `, ${transmission}` : ""}).`);
       if (ratio > 1.15) risks.push({ level: "medium", text: "Vraagprijs ligt ruim boven de geschatte marktwaarde; onderhandel of vergelijk." });
       if (ratio < 0.7) risks.push({ level: "high", text: "Vraagprijs ligt opvallend ver onder de marktwaarde: wees alert op fraude of verborgen gebreken." });
     } else reasons.push(nl.mid ? "Geen vraagprijs ingevoerd; geen beoordeling." : "Geen marktwaarde beschikbaar.");

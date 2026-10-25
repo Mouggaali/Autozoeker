@@ -1,12 +1,12 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import type { GradedListing, ImportCostResult, ListingFilters, ValuationResult } from "@/lib/types";
+import type { GradedListing, ImportCostResult, ListingFilters, TransmissionGroup, ValuationResult } from "@/lib/types";
 import type { SearchLink } from "@/lib/providers/market";
 import { Card, ProvBadge, eur, scoreColor } from "./ui";
 
 interface ListingsResponse {
   listings: GradedListing[];
-  stats: { count: number; medianPrice: number | null; medianMileage: number | null };
+  stats: { count: number; medianPrice: number | null; medianMileage: number | null; comparedTransmission: TransmissionGroup | null };
   filters: ListingFilters;
   importExtras: number;
   errors: Record<string, string>;
@@ -22,9 +22,17 @@ interface Props {
   links: SearchLink[];
   askingPrice?: number;
   mileage?: number;
+  transmission?: TransmissionGroup;
 }
 
 const fieldCls = "mt-1 w-full rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-fg";
+const TR_PLURAL: Record<TransmissionGroup, string> = { automaat: "automaten", handgeschakeld: "handgeschakelde auto's" };
+/** Kwantiel met lineaire interpolatie op een gesorteerde lijst. */
+const quantile = (sorted: number[], q: number) => {
+  const i = (sorted.length - 1) * q;
+  const lo = Math.floor(i);
+  return Math.round(sorted[lo] + (sorted[Math.ceil(i)] - sorted[lo]) * (i - lo));
+};
 const SOURCE_NAMES: Record<string, string> = { marktplaats: "Marktplaats", autoscout24_nl: "AutoScout24.nl", autoscout24_de: "AutoScout24.de" };
 
 function GradeChip({ grade, confidence }: { grade: number; confidence: string }) {
@@ -35,12 +43,12 @@ function GradeChip({ grade, confidence }: { grade: number; confidence: string })
   );
 }
 
-export default function MarketTabs({ kenteken, nl, de, importCost, links, askingPrice, mileage }: Props) {
+export default function MarketTabs({ kenteken, nl, de, importCost, links, askingPrice, mileage, transmission }: Props) {
   const [tab, setTab] = useState<"NL" | "DE">("NL");
   const [data, setData] = useState<ListingsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState<Record<"yearFrom" | "yearTo" | "kmFrom" | "kmTo" | "body" | "fuel", string> | null>(null);
+  const [form, setForm] = useState<Record<"yearFrom" | "yearTo" | "kmFrom" | "kmTo" | "body" | "fuel" | "transmission", string> | null>(null);
 
   const load = useCallback(async (params?: URLSearchParams) => {
     setLoading(true);
@@ -49,19 +57,20 @@ export default function MarketTabs({ kenteken, nl, de, importCost, links, asking
       const q = new URLSearchParams({ kenteken });
       if (askingPrice) q.set("refPrice", String(askingPrice));
       if (mileage) q.set("refKm", String(mileage));
+      if (transmission) q.set("transmissie", transmission);
       params?.forEach((v, k) => q.set(k, v));
       const r = await fetch(`/api/listings?${q}`);
       const j = await r.json();
       if (!r.ok) throw new Error(j.error ?? "Mislukt");
       setData(j as ListingsResponse);
       const f = (j as ListingsResponse).filters;
-      setForm({ yearFrom: f.yearFrom?.toString() ?? "", yearTo: f.yearTo?.toString() ?? "", kmFrom: f.kmFrom?.toString() ?? "", kmTo: f.kmTo?.toString() ?? "", body: f.body ?? "alle", fuel: f.fuel ?? "alle" });
+      setForm({ yearFrom: f.yearFrom?.toString() ?? "", yearTo: f.yearTo?.toString() ?? "", kmFrom: f.kmFrom?.toString() ?? "", kmTo: f.kmTo?.toString() ?? "", body: f.body ?? "alle", fuel: f.fuel ?? "alle", transmission: f.transmission ?? "alle" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Mislukt");
     } finally {
       setLoading(false);
     }
-  }, [kenteken, askingPrice, mileage]);
+  }, [kenteken, askingPrice, mileage, transmission]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -69,13 +78,19 @@ export default function MarketTabs({ kenteken, nl, de, importCost, links, asking
     e?.preventDefault();
     if (form) load(new URLSearchParams(form));
   };
-  const reset = () => load(new URLSearchParams({ yearFrom: "", yearTo: "", kmFrom: "", kmTo: "", body: "alle", fuel: "alle" }));
+  const reset = () => load(new URLSearchParams({ yearFrom: "", yearTo: "", kmFrom: "", kmTo: "", body: "alle", fuel: "alle", transmission: "alle" }));
 
   const val = tab === "NL" ? nl : de;
   const list = (data?.listings ?? []).filter((l) => l.country === tab);
   const lk = links.filter((l) => l.country === tab);
   const medianOf = (xs: number[]) => (xs.length ? [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)] : null);
-  const liveMedian = medianOf(list.map((l) => l.price));
+  // Prijsbandbreedte: alleen auto's met dezelfde transmissie als de eigen auto (bij minder dan 3: alle)
+  const sameTr = transmission ? list.filter((l) => l.transmissionGroup === transmission) : [];
+  const peers = sameTr.length >= 3 ? sameTr : list;
+  const peersTr = peers === sameTr ? transmission : undefined;
+  const prices = peers.map((l) => l.price).sort((a, b) => a - b);
+  const liveMedian = medianOf(prices);
+  const band = prices.length >= 3 ? { low: quantile(prices, 0.25), high: quantile(prices, 0.75), min: prices[0], max: prices[prices.length - 1] } : null;
   const failedSources = data ? Object.entries(data.errors).filter(([k]) => (tab === "NL" ? k !== "autoscout24_de" : k === "autoscout24_de")) : [];
 
   return (
@@ -112,7 +127,17 @@ export default function MarketTabs({ kenteken, nl, de, importCost, links, asking
           {liveMedian != null ? (
             <>
               <div className="mt-1 text-3xl font-extrabold">{eur(liveMedian)}</div>
-              <div className="text-sm text-muted">Op basis van {list.length} advertenties in {tab === "NL" ? "Nederland" : "Duitsland"}. Vraagprijzen zijn niet gelijk aan verkoopprijzen.</div>
+              {band && <div className="text-sm font-semibold">Bandbreedte {eur(band.low)} – {eur(band.high)}</div>}
+              {band && <div className="text-xs text-muted">Middelste 50% van de vraagprijzen; laagste {eur(band.min)}, hoogste {eur(band.max)}.</div>}
+              {askingPrice && band && tab === "NL" && (
+                <div className={`mt-2 text-sm font-semibold ${askingPrice > band.high ? "text-bad" : askingPrice < band.low ? "text-good" : ""}`}>
+                  Vraagprijs {eur(askingPrice)} ligt {askingPrice > band.high ? "boven" : askingPrice < band.low ? "onder" : "binnen"} de bandbreedte.
+                </div>
+              )}
+              <div className="mt-1 text-sm text-muted">
+                Op basis van {peers.length} {peersTr ? TR_PLURAL[peersTr] : "advertenties"} in {tab === "NL" ? "Nederland" : "Duitsland"}
+                {transmission && !peersTr && sameTr.length < list.length ? ` (te weinig ${TR_PLURAL[transmission]} gevonden; alle transmissies meegeteld)` : ""}. Vraagprijzen zijn niet gelijk aan verkoopprijzen.
+              </div>
             </>
           ) : <p className="mt-1 text-sm text-muted">{data ? "Geen advertenties gevonden." : error ? "Niet beschikbaar." : "Advertenties laden…"}</p>}
         </div>
@@ -146,7 +171,7 @@ export default function MarketTabs({ kenteken, nl, de, importCost, links, asking
             <h3 className="font-semibold">Filter vergelijkbare auto&apos;s</h3>
             <button type="button" onClick={reset} className="text-xs text-brand underline">Alle filters wissen</button>
           </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
+          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-7">
             <label className="text-xs text-muted">Bouwjaar van
               <input value={form.yearFrom} onChange={(e) => setForm({ ...form, yearFrom: e.target.value.replace(/\D/g, "").slice(0, 4) })} inputMode="numeric" placeholder="2018" className={fieldCls} />
             </label>
@@ -180,10 +205,17 @@ export default function MarketTabs({ kenteken, nl, de, importCost, links, asking
                 <option value="elektrisch">Elektrisch</option>
               </select>
             </label>
+            <label className="text-xs text-muted">Transmissie
+              <select value={form.transmission} onChange={(e) => setForm({ ...form, transmission: e.target.value })} className={fieldCls}>
+                <option value="alle">Alle</option>
+                <option value="handgeschakeld">Handgeschakeld</option>
+                <option value="automaat">Automaat</option>
+              </select>
+            </label>
           </div>
           <div className="mt-3 flex items-center gap-3">
             <button disabled={loading} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{loading ? "Zoeken…" : "Filter toepassen"}</button>
-            <span className="text-xs text-muted">Standaard: zelfde brandstof als jouw auto, bouwjaar ±1.</span>
+            <span className="text-xs text-muted">Standaard: zelfde brandstof{transmission ? " en transmissie" : ""} als jouw auto, bouwjaar ±1.</span>
           </div>
         </form>
       )}
@@ -213,12 +245,12 @@ export default function MarketTabs({ kenteken, nl, de, importCost, links, asking
                   <span className="font-extrabold tabular-nums">{eur(l.price)}</span>
                 </div>
                 <div className="text-xs text-muted">
-                  {l.platform} · {[l.year, l.mileage != null ? `${l.mileage.toLocaleString("nl-NL")} km` : null, l.fuel, l.transmission, l.power, l.location].filter(Boolean).join(" · ")}
+                  {l.platform} · {[l.year, l.mileage != null ? `${l.mileage.toLocaleString("nl-NL")} km` : null, l.fuel, l.transmissionGroup ? (l.transmissionGroup === "automaat" ? "Automaat" : "Handgeschakeld") : l.transmission, l.power, l.location].filter(Boolean).join(" · ")}
                   {l.country === "DE" && <> · <b>≈ {eur(l.effectivePrice)} incl. import</b></>}
                 </div>
                 <div className="mt-1 text-xs">{l.gradeReasons.join(" · ")}</div>
                 {!l.sameAsReport && (
-                  <a href={`/auto/${kenteken}?prijs=${l.price}${l.mileage ? `&km=${l.mileage}` : ""}`} className="mt-1 inline-block text-xs text-brand hover:underline">Bekijk rapport met deze prijs en km →</a>
+                  <a href={`/auto/${kenteken}?prijs=${l.price}${l.mileage ? `&km=${l.mileage}` : ""}${l.transmissionGroup ? `&transmissie=${l.transmissionGroup}` : ""}`} className="mt-1 inline-block text-xs text-brand hover:underline">Bekijk rapport met deze prijs en km →</a>
                 )}
                 {l.flags.map((f) => <div key={f} className="mt-1 inline-block rounded bg-warn-soft px-1.5 py-0.5 text-xs text-warn">⚠ {f}</div>)}
               </div>

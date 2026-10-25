@@ -1,4 +1,4 @@
-import type { ImportCostResult, ValuationResult, Vehicle } from "../types";
+import type { ImportCostResult, TransmissionGroup, ValuationResult, Vehicle } from "../types";
 import { calcBpm } from "./bpm";
 
 /**
@@ -9,12 +9,17 @@ import { calcBpm } from "./bpm";
 export const EXPECTED_KM_PER_YEAR = 15000;
 /** Aanname: vergelijkbare auto's staan in Duitsland gemiddeld lager geprijsd dan in NL. */
 export const DE_PRICE_FACTOR = 0.92;
+/**
+ * Aanname: een automaat houdt op de gebruiktwagenmarkt zijn waarde beter vast dan een handbak (meer vraag).
+ * De meerprijs van de automaat zit al in de RDW-catalogusprijs; dit is alleen het verschil in restwaarde.
+ */
+export const TRANSMISSION_RESIDUAL: Record<TransmissionGroup, number> = { automaat: 0.04, handgeschakeld: -0.03 };
 
 export function residualFactor(ageYears: number): number {
   return 0.88 * Math.exp(-0.13 * Math.max(0, ageYears));
 }
 
-export function estimateValue(v: Vehicle, mileage: number | undefined, country: "NL" | "DE"): ValuationResult {
+export function estimateValue(v: Vehicle, mileage: number | undefined, country: "NL" | "DE", transmission?: TransmissionGroup): ValuationResult {
   const assumptions: string[] = [];
   if (!v.catalogusprijs || v.catalogusprijs <= 0 || v.leeftijdMaanden == null) {
     return {
@@ -37,6 +42,13 @@ export function estimateValue(v: Vehicle, mileage: number | undefined, country: 
     assumptions.push(`Kilometerstand ${mileage.toLocaleString("nl-NL")} km t.o.v. verwacht ${Math.round(expected).toLocaleString("nl-NL")} km: ${(adj * 100).toFixed(1)}% correctie.`);
   } else {
     assumptions.push("Kilometerstand onbekend: gemiddelde jaarkilometrage (15.000 km) verondersteld; bredere bandbreedte.");
+  }
+  if (transmission && !v.isElektrisch) {
+    const adj = TRANSMISSION_RESIDUAL[transmission];
+    value *= 1 + adj;
+    assumptions.push(`${transmission === "automaat" ? "Automaat" : "Handgeschakeld"}: ${adj > 0 ? "+" : ""}${(adj * 100).toFixed(0)}% restwaarde t.o.v. het gemiddelde (schatting; vraag naar automaten is groter).`);
+  } else if (!transmission && !v.isElektrisch) {
+    assumptions.push("Transmissie onbekend: geen correctie voor handbak of automaat.");
   }
   if (country === "DE") {
     value *= DE_PRICE_FACTOR;
