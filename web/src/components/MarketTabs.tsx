@@ -60,7 +60,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
   if (askingPrice) own.prijs = String(askingPrice);
   if (mileage) own.km = String(mileage);
   if (transmission) own.transmissie = transmission;
-  const resetHref = `?${new URLSearchParams({ ...own, yearFrom: "", yearTo: "", kmFrom: "", kmTo: "", pkFrom: "", pkTo: "", body: "alle", fuel: "alle", transmission: "alle" })}#markt`;
+  const resetHref = `?${new URLSearchParams({ ...own, yearFrom: "", yearTo: "", kmFrom: "", kmTo: "", pkFrom: "", pkTo: "", priceFrom: "", priceTo: "", body: "alle", fuel: "alle", transmission: "alle" })}#markt`;
   const defaultHref = `?${new URLSearchParams(own)}#markt`;
 
   return (
@@ -87,6 +87,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
             <ul className="mt-2 space-y-1">
               <li>Bouwjaar: <b>{f?.yearFrom || f?.yearTo ? `${f?.yearFrom ?? "…"} – ${f?.yearTo ?? "…"}` : "alle"}</b></li>
               <li>Vermogen: <b>{f?.pkFrom || f?.pkTo ? `${f?.pkFrom ?? "…"} – ${f?.pkTo ?? "…"} pk` : "alle"}</b></li>
+              <li>Vraagprijs: <b>{f?.priceFrom || f?.priceTo ? `${f?.priceFrom ? eur(f.priceFrom) : "…"} – ${f?.priceTo ? eur(f.priceTo) : "…"}` : "alle"}</b></li>
               <li>Transmissie: <b>{f?.transmission ? TR_LABEL[f.transmission] : market.comparedTransmission ? `${TR_LABEL[market.comparedTransmission]} (alleen in de mediaan)` : "alle"}</b></li>
               <li>Brandstof: <b>{f?.fuel ?? "alle"}</b>{f?.body ? <> · Carrosserie: <b>{f.body}</b></> : null}{f?.kmFrom || f?.kmTo ? <> · Km: <b>{f?.kmFrom ?? 0} – {f?.kmTo ?? "…"}</b></> : null}</li>
             </ul>
@@ -140,6 +141,12 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
             <label className="text-xs text-muted">Vermogen tot (pk)
               <input name="pkTo" defaultValue={f.pkTo ?? ""} inputMode="numeric" placeholder="150" className={fieldCls} />
             </label>
+            <label className="text-xs text-muted">Prijs van (€)
+              <input name="priceFrom" defaultValue={f.priceFrom ?? ""} inputMode="numeric" placeholder="5000" className={fieldCls} />
+            </label>
+            <label className="text-xs text-muted">Prijs tot (€)
+              <input name="priceTo" defaultValue={f.priceTo ?? ""} inputMode="numeric" placeholder="15000" className={fieldCls} />
+            </label>
             <label className="text-xs text-muted">Kilometers van
               <input name="kmFrom" defaultValue={f.kmFrom ?? ""} inputMode="numeric" placeholder="0" className={fieldCls} />
             </label>
@@ -177,7 +184,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button className="rounded-md bg-fg px-4 py-2 text-sm font-semibold text-bg hover:bg-brand hover:text-white">Filter toepassen</button>
-            <span className="text-xs text-muted">Standaard: zelfde brandstof{transmission ? " en transmissie" : ""}, bouwjaar ±1, vermogen ±20%. Het cijfer wordt herberekend met de gefilterde auto&apos;s.</span>
+            <span className="text-xs text-muted">Standaard: zelfde brandstof{transmission ? " en transmissie" : ""}, bouwjaar ±1, vermogen ±20%. Het cijfer wordt herberekend met de gefilterde auto&apos;s; let op dat een prijsfilter ook de mediaan beïnvloedt.</span>
           </div>
         </form>
       )}

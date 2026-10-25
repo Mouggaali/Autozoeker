@@ -38,6 +38,8 @@ export function parseFilters(get: Params, v: Vehicle, ownTransmission?: Transmis
     transmission: pick("transmission", TRANSMISSIONS, def.transmission),
     pkFrom: num("pkFrom", def.pkFrom),
     pkTo: num("pkTo", def.pkTo),
+    priceFrom: num("priceFrom", def.priceFrom),
+    priceTo: num("priceTo", def.priceTo),
   };
 }
 

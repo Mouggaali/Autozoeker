@@ -9,7 +9,7 @@ export const maxDuration = 60;
 /**
  * Vergelijkbare advertenties + cijfers + prijsbandbreedte.
  * /api/listings?kenteken=G001BB[&transmissie=automaat&refPrice=&refKm=]
- *   [&yearFrom=&yearTo=&kmFrom=&kmTo=&pkFrom=&pkTo=&body=hatchback|alle&fuel=benzine|alle&transmission=automaat|alle]
+ *   [&yearFrom=&yearTo=&kmFrom=&kmTo=&pkFrom=&pkTo=&priceFrom=&priceTo=&body=hatchback|alle&fuel=benzine|alle&transmission=automaat|alle]
  * `transmissie` is de transmissie van de eigen auto; `transmission` is het filter.
  * Zonder filterparameters gelden de standaardfilters (zelfde brandstof en transmissie, bouwjaar ±1, vermogen ±20%).
  */

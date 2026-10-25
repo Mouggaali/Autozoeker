@@ -67,11 +67,13 @@ export function defaultFilters(v: Vehicle, transmission?: TransmissionGroup): Li
     transmission: v.isElektrisch ? null : transmission ?? null,
     pkFrom: pk ? Math.floor((pk * (1 - POWER_MARGIN)) / 5) * 5 : null,
     pkTo: pk ? Math.ceil((pk * (1 + POWER_MARGIN)) / 5) * 5 : null,
+    priceFrom: null,
+    priceTo: null,
   };
 }
 
 export async function fetchListings(v: Vehicle, f: ListingFilters): Promise<ListingsResult> {
-  const key = [v.merk, v.model, f.yearFrom, f.yearTo, f.kmFrom, f.kmTo, f.body, f.fuel, f.transmission, f.pkFrom, f.pkTo].join("-").toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const key = [v.merk, v.model, f.yearFrom, f.yearTo, f.kmFrom, f.kmTo, f.body, f.fuel, f.transmission, f.pkFrom, f.pkTo, f.priceFrom, f.priceTo].join("-").toLowerCase().replace(/[^a-z0-9]+/g, "_");
   const file = path.join(CACHE_DIR, `${key}.json`);
   try {
     const c = JSON.parse(await fs.readFile(file, "utf8")) as ListingsResult;
@@ -82,7 +84,8 @@ export async function fetchListings(v: Vehicle, f: ListingFilters): Promise<List
   const words = v.model.split(/\s+/);
   const model = (words[1] && /^(\d{1,2}|klasse|class|serie|series)$/i.test(words[1]) ? words.slice(0, 2) : words.slice(0, 1)).join(" ");
   const raw = await run({ make: v.merk.split(" ")[0], model, limit: 12, year_from: f.yearFrom, year_to: f.yearTo, km_from: f.kmFrom, km_to: f.kmTo, body: f.body, fuel: f.fuel, transmission: f.transmission,
-    power_from: f.pkFrom ? Math.floor(f.pkFrom / KW_TO_PK) : null, power_to: f.pkTo ? Math.ceil(f.pkTo / KW_TO_PK) : null });
+    power_from: f.pkFrom ? Math.floor(f.pkFrom / KW_TO_PK) : null, power_to: f.pkTo ? Math.ceil(f.pkTo / KW_TO_PK) : null,
+    price_from: f.priceFrom, price_to: f.priceTo });
   const result: ListingsResult = {
     // Dezelfde advertentie kan dubbel in de resultaten staan (bijv. gesponsord + regulier)
     listings: raw.listings

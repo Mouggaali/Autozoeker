@@ -92,7 +92,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
           <h1 className="mt-4 text-4xl font-extrabold leading-none sm:text-5xl">{v.merk} <span className="text-muted">{v.model}</span></h1>
           <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
             {specRow.map(([k, val]) => (
-              <div key={k}><dt className="eyebrow">{k}</dt><dd className="num mt-0.5 text-sm font-medium">{val ?? <span className="text-muted">–</span>}</dd></div>
+              <div key={k} className="min-w-0"><dt className="eyebrow">{k}</dt><dd className="num mt-0.5 text-sm font-medium break-all">{val ?? <span className="text-muted">–</span>}</dd></div>
             ))}
           </dl>
           <div className="mt-5 flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-wider">

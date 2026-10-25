@@ -204,4 +204,6 @@ export interface ListingFilters {
   transmission: TransmissionGroup | null; // null = alle
   pkFrom: number | null;
   pkTo: number | null;
+  priceFrom: number | null; // vraagprijs in euro
+  priceTo: number | null;
 }

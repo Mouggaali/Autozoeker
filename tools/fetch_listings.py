@@ -5,6 +5,7 @@ Invoer (stdin, JSON): {"make": "BMW", "model": "I3", "limit": 12,
                        "body": "hatchback"|"stationwagon"|"sedan"|"suv"|"mpv"|"coupe"|"cabrio"|null,
                        "fuel": "benzine"|"diesel"|"hybride"|"elektrisch"|null,
                        "transmission": "handgeschakeld"|"automaat"|null,
+                       "price_from": 5000, "price_to": 12000,  # vraagprijs in euro
                        "power_from": 75, "power_to": 110,   # kW; advertenties zonder bekend vermogen vallen dan af
                        "sources": ["marktplaats", "autoscout24_nl", "autoscout24_de"]}
 Uitvoer (stdout, JSON): {"listings": [...], "errors": {"bron": "melding"}}
@@ -141,7 +142,10 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
 
     mq.get_request = get_with_ranges
     try:
-        q = SearchQuery(f"{make} {model}".strip(), category=cars, limit=100, sort_by=SortBy.OPTIMIZED, sort_order=SortOrder.ASC)
+        q = SearchQuery(
+            f"{make} {model}".strip(), category=cars, limit=100, sort_by=SortBy.OPTIMIZED, sort_order=SortOrder.ASC,
+            price_from=f.get("price_from"), price_to=f.get("price_to"),
+        )
     finally:
         mq.get_request = orig
     out = []
@@ -160,6 +164,8 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
         if model and model.lower().split()[0] not in hay:
             continue
         if not l.price or l.price < 500:  # bieden/ruilen/aanbetaling
+            continue
+        if (f.get("price_from") and l.price < f["price_from"]) or (f.get("price_to") and l.price > f["price_to"]):
             continue
         if f.get("year_from") and (y is None or y < f["year_from"]):
             continue
@@ -217,6 +223,10 @@ def autoscout24(country: str, make: str, model: str, f: dict) -> list[dict]:
         base["kmfrom"] = f["km_from"]
     if f.get("km_to"):
         base["kmto"] = f["km_to"]
+    if f.get("price_from"):
+        base["pricefrom"] = f["price_from"]
+    if f.get("price_to"):
+        base["priceto"] = f["price_to"]
     if f.get("body") in BODY_AS24:
         base["body"] = BODY_AS24[f["body"]]
     if f.get("transmission") in GEAR_AS24:
@@ -302,7 +312,7 @@ def main() -> None:
     req = json.load(sys.stdin)
     make, model = req["make"], req["model"]
     limit = int(req.get("limit", 12))
-    filters = {k: req.get(k) for k in ("year_from", "year_to", "km_from", "km_to", "body", "fuel", "transmission", "power_from", "power_to")}
+    filters = {k: req.get(k) for k in ("year_from", "year_to", "km_from", "km_to", "body", "fuel", "transmission", "power_from", "power_to", "price_from", "price_to")}
     sources = req.get("sources", ["marktplaats", "autoscout24_nl", "autoscout24_de"])
     yf, yt = filters["year_from"], filters["year_to"]
     mid_year = (yf + yt) / 2 if yf and yt else None

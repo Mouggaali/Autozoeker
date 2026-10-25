@@ -70,26 +70,32 @@ export function Bar({ value, max = 10, color }: { value: number; max?: number; c
 
 /**
  * Prijsbalk: laagste–hoogste vraagprijs, de middelste 50% gearceerd, de mediaan als streep en
- * (optioneel) de vraagprijs van de eigen auto als stip.
+ * (optioneel) de vraagprijs van de eigen auto als stip. Labels staan in eigen rijen (mediaan boven,
+ * eigen prijs onder, uitersten daaronder) en worden aan de randen uitgelijnd zodat niets overlapt.
  */
 export function PriceRange({ min, low, median, high, max, mark }: { min: number; low: number; median: number; high: number; max: number; mark?: number }) {
   const lo = Math.min(min, mark ?? min), hi = Math.max(max, mark ?? max);
-  const pos = (n: number) => `${((n - lo) / (hi - lo || 1)) * 100}%`;
+  const frac = (n: number) => (n - lo) / (hi - lo || 1);
+  const pos = (n: number) => `${frac(n) * 100}%`;
+  // Label boven een punt: links uitgelijnd bij de linkerrand, rechts bij de rechterrand, anders gecentreerd
+  const align = (n: number) => (frac(n) < 0.2 ? "translate-x-0" : frac(n) > 0.8 ? "-translate-x-full" : "-translate-x-1/2");
   const markColor = mark == null ? undefined : mark > high ? "var(--bad)" : mark < low ? "var(--good)" : "var(--fg)";
   return (
-    <div className="pt-7 pb-6" role="img" aria-label={`Bandbreedte ${eur(low)} tot ${eur(high)}, mediaan ${eur(median)}${mark != null ? `, vraagprijs ${eur(mark)}` : ""}`}>
-      <div className="relative h-3 rounded-full bg-line">
-        <div className="absolute inset-y-0 rounded-full" style={{ left: pos(low), width: `calc(${pos(high)} - ${pos(low)})`, background: "color-mix(in srgb, var(--brand) 35%, transparent)" }} />
-        <div className="absolute -inset-y-1 w-0.5 rounded bg-brand" style={{ left: pos(median) }} />
-        <span className="num absolute -top-6 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold text-brand" style={{ left: pos(median) }}>mediaan {eur(median)}</span>
-        {mark != null && (
-          <>
-            <div className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card" style={{ left: pos(mark), background: markColor }} />
-            <span className="num absolute top-5 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold" style={{ left: pos(mark), color: markColor }}>jouw prijs {eur(mark)}</span>
-          </>
-        )}
+    <div className="py-2" role="img" aria-label={`Bandbreedte ${eur(low)} tot ${eur(high)}, mediaan ${eur(median)}${mark != null ? `, vraagprijs ${eur(mark)}` : ""}`}>
+      <div className="relative h-5">
+        <span className={`num absolute bottom-0 whitespace-nowrap text-[11px] font-semibold text-brand ${align(median)}`} style={{ left: pos(median) }}>mediaan {eur(median)}</span>
       </div>
-      <div className="num mt-1.5 flex justify-between text-[10px] text-muted"><span>{eur(lo)}</span><span>{eur(hi)}</span></div>
+      <div className="relative mt-1.5 h-3 rounded-full bg-line">
+        <div className="absolute inset-y-0 rounded-full" style={{ left: pos(low), width: `calc(${pos(high)} - ${pos(low)})`, background: "color-mix(in srgb, var(--brand) 35%, transparent)" }} />
+        <div className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-brand" style={{ left: pos(median) }} />
+        {mark != null && <div className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card" style={{ left: pos(mark), background: markColor }} />}
+      </div>
+      {mark != null && (
+        <div className="relative mt-1.5 h-5">
+          <span className={`num absolute top-0 whitespace-nowrap text-[11px] font-semibold ${align(mark)}`} style={{ left: pos(mark), color: markColor }}>jouw prijs {eur(mark)}</span>
+        </div>
+      )}
+      <div className="num mt-1 flex justify-between border-t border-dashed border-line pt-1 text-[10px] text-muted"><span>{eur(lo)}</span><span>{eur(hi)}</span></div>
     </div>
   );
 }
