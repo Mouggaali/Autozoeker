@@ -1,0 +1,4 @@
+marktplaats
+requests
+beautifulsoup4
+truststore
