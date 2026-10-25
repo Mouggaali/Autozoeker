@@ -46,10 +46,15 @@ function run(input: unknown): Promise<{ listings: Omit<Listing, "provenance">[];
 }
 
 /**
- * Standaardfilters: bouwjaar ±1, dezelfde brandstof en (indien opgegeven) dezelfde transmissie. Carrosserie staat standaard op "alle": de RDW-inrichting
+ * Standaardfilters: bouwjaar ±1, dezelfde brandstof, (indien opgegeven) dezelfde transmissie en vermogen ±20%.
+ * De vermogensrange houdt sportieve varianten (bijv. Golf GTI/R naast een 1.4 TSI) buiten de vergelijking. Carrosserie staat standaard op "alle": de RDW-inrichting
  * is te grof (een BMW i3 staat daar als "sedan") en zou goede resultaten wegfilteren.
  */
+export const KW_TO_PK = 1.35962;
+export const POWER_MARGIN = 0.2;
+
 export function defaultFilters(v: Vehicle, transmission?: TransmissionGroup): ListingFilters {
+  const pk = v.vermogenKw ? v.vermogenKw * KW_TO_PK : null;
   const fuel: FuelGroup = v.isElektrisch ? "elektrisch" : v.isHybride ? "hybride" : v.isDiesel ? "diesel" : "benzine";
   return {
     yearFrom: v.bouwjaar ? v.bouwjaar - 1 : null,
@@ -60,11 +65,13 @@ export function defaultFilters(v: Vehicle, transmission?: TransmissionGroup): Li
     fuel,
     // Elektrische auto's zijn altijd automaat; filteren zou alleen advertenties zonder transmissieveld wegfilteren
     transmission: v.isElektrisch ? null : transmission ?? null,
+    pkFrom: pk ? Math.floor((pk * (1 - POWER_MARGIN)) / 5) * 5 : null,
+    pkTo: pk ? Math.ceil((pk * (1 + POWER_MARGIN)) / 5) * 5 : null,
   };
 }
 
 export async function fetchListings(v: Vehicle, f: ListingFilters): Promise<ListingsResult> {
-  const key = [v.merk, v.model, f.yearFrom, f.yearTo, f.kmFrom, f.kmTo, f.body, f.fuel, f.transmission].join("-").toLowerCase().replace(/[^a-z0-9]+/g, "_");
+  const key = [v.merk, v.model, f.yearFrom, f.yearTo, f.kmFrom, f.kmTo, f.body, f.fuel, f.transmission, f.pkFrom, f.pkTo].join("-").toLowerCase().replace(/[^a-z0-9]+/g, "_");
   const file = path.join(CACHE_DIR, `${key}.json`);
   try {
     const c = JSON.parse(await fs.readFile(file, "utf8")) as ListingsResult;
@@ -74,7 +81,8 @@ export async function fetchListings(v: Vehicle, f: ListingFilters): Promise<List
   // RDW-handelsbenaming is vaak "I3" of "GOLF"; de eerste woorden volstaan voor het zoeken
   const words = v.model.split(/\s+/);
   const model = (words[1] && /^(\d{1,2}|klasse|class|serie|series)$/i.test(words[1]) ? words.slice(0, 2) : words.slice(0, 1)).join(" ");
-  const raw = await run({ make: v.merk.split(" ")[0], model, limit: 12, year_from: f.yearFrom, year_to: f.yearTo, km_from: f.kmFrom, km_to: f.kmTo, body: f.body, fuel: f.fuel, transmission: f.transmission });
+  const raw = await run({ make: v.merk.split(" ")[0], model, limit: 12, year_from: f.yearFrom, year_to: f.yearTo, km_from: f.kmFrom, km_to: f.kmTo, body: f.body, fuel: f.fuel, transmission: f.transmission,
+    power_from: f.pkFrom ? Math.floor(f.pkFrom / KW_TO_PK) : null, power_to: f.pkTo ? Math.ceil(f.pkTo / KW_TO_PK) : null });
   const result: ListingsResult = {
     // Dezelfde advertentie kan dubbel in de resultaten staan (bijv. gesponsord + regulier)
     listings: raw.listings

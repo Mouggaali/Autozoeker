@@ -115,6 +115,7 @@ export interface Listing {
   transmission: string | null;
   transmissionGroup?: TransmissionGroup | null;
   power: string | null;
+  powerKw?: number | null;
   location: string | null;
   url: string;
   image?: string | null;
@@ -130,14 +131,15 @@ export interface GradedListing extends Listing {
   flags: string[];
 }
 
-export interface ValuationResult {
-  country: "NL" | "DE";
-  low: number | null;
-  mid: number | null;
-  high: number | null;
-  provenance: Provenance;
-  method: string;
-  assumptions: string[];
+/** Vraagprijzen van vergelijkbare advertenties: mediaan en de middelste 50% (P25–P75). */
+export interface PriceBand {
+  count: number;
+  median: number;
+  low: number;
+  high: number;
+  min: number;
+  max: number;
+  medianKm: number | null;
 }
 
 export interface BpmTariff {
@@ -200,4 +202,6 @@ export interface ListingFilters {
   body: BodyGroup | null; // null = alle
   fuel: FuelGroup | null; // null = alle
   transmission: TransmissionGroup | null; // null = alle
+  pkFrom: number | null;
+  pkTo: number | null;
 }

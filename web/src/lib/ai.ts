@@ -15,8 +15,9 @@ export async function summarize(r: Report): Promise<{ text: string; source: "ai"
     risicos: r.score.risks.map((x) => x.text),
     tellerstand: r.bundle.odometer.verdict,
     apk_meldingen: r.bundle.inspections.length,
-    waarde_nl: r.nl.mid,
-    waarde_de: r.de.mid,
+    mediaan_vraagprijs_nl: r.market?.nl?.median ?? null,
+    bandbreedte_nl: r.market?.nl ? [r.market.nl.low, r.market.nl.high] : null,
+    mediaan_vraagprijs_de: r.market?.de?.median ?? null,
     kosten_per_maand: Math.round(r.ownership.perMonth),
     controles: r.score.checks,
   };

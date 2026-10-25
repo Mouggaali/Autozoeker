@@ -4,14 +4,13 @@ import Calculator from "@/components/Calculator";
 import MarketTabs from "@/components/MarketTabs";
 import SearchForm from "@/components/SearchForm";
 import SummaryBox from "@/components/SummaryBox";
-import { Bar, Card, LineChart, ProvBadge, ScoreGauge, eur, scoreColor } from "@/components/ui";
+import { Bar, Card, ProvBadge, ScoreGauge, eur, scoreColor } from "@/components/ui";
 import { BPM_YEAR, depreciationPct } from "@/lib/engines/bpm";
 import { ownershipFacts } from "@/lib/engines/ownership";
 import { fmtDuration, registrationHistory } from "@/lib/engines/registration";
-import { residualFactor } from "@/lib/engines/valuation";
 import { formatPlate, parseVehicleKey } from "@/lib/plate";
-import { buildReport, loadBundle } from "@/lib/report";
-import { TRANSMISSION_LABEL, effectiveTransmission, parseTransmission } from "@/lib/transmission";
+import { loadReport } from "@/lib/report";
+import { TRANSMISSION_LABEL } from "@/lib/transmission";
 
 const toneCls = { neutral: "bg-brand", good: "bg-good", warn: "bg-warn", bad: "bg-bad" } as const;
 const riskCls = { high: "bg-bad-soft text-bad", medium: "bg-warn-soft text-warn", low: "bg-brand-soft text-brand" } as const;
@@ -49,13 +48,10 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
   if (!key) notFound();
   if (key.kind === "vin") return <VinReport vin={key.value} />;
 
-  const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-  const price = Number(first(sp.prijs)) || undefined;
-  const km = Number(first(sp.km)) || undefined;
-  const transmissionInput = parseTransmission(first(sp.transmissie));
+  const get = (name: string) => { const x = sp[name]; return (Array.isArray(x) ? x[0] : x) ?? null; };
 
   let loaded;
-  try { loaded = await loadBundle(key.value); } catch {
+  try { loaded = await loadReport(key.value, get); } catch {
     return (
       <div className="mx-auto max-w-xl px-4 py-16"><Card title="RDW tijdelijk niet bereikbaar"><p className="text-sm">De RDW Open Data gaf een fout terug. Probeer het over een moment opnieuw.</p><div className="mt-4"><SearchForm compact /></div></Card></div>
     );
@@ -66,20 +62,12 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
     );
   }
 
-  const r = buildReport(loaded.bundle, { askingPrice: price, mileage: km, transmission: transmissionInput });
-  const { bundle, score, nl } = r;
+  const r = loaded.report;
+  const { bundle, score } = r;
   const v = bundle.vehicle;
-  const transmission = effectiveTransmission(v, transmissionInput);
-  const qs = new URLSearchParams();
-  if (price) qs.set("prijs", String(price));
-  if (km) qs.set("km", String(km));
-  if (transmission) qs.set("transmissie", transmission);
-  const summaryQuery = new URLSearchParams({ kenteken: v.kenteken, ...Object.fromEntries(qs) }).toString();
-
-  const curve = v.catalogusprijs
-    ? Array.from({ length: 16 }, (_, y) => ({ x: y, y: Math.round(v.catalogusprijs! * residualFactor(y)) }))
-    : null;
-  const age = (v.leeftijdMaanden ?? 0) / 12;
+  const { askingPrice: price, mileage: km, transmission } = r.input;
+  // Samenvatting met dezelfde invoer en vergelijkingsfilters als dit rapport
+  const summaryQuery = new URLSearchParams({ ...Object.fromEntries(Object.keys(sp).map((k) => [k, get(k) ?? ""])), kenteken: v.kenteken }).toString();
   const reg = registrationHistory(v);
 
   return (
@@ -244,14 +232,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         )}
       </Card>
 
-      {/* Waarde */}
-      {curve && (
-        <Card title="Waardeverloop (model)" subtitle="Geschatte restwaarde per leeftijd, op basis van de catalogusprijs. Geen marktdata.">
-          <LineChart points={curve} xLabel="leeftijd (jaar)" yFormat={(n) => eur(n)} marker={nl.mid ? { x: Math.min(15, age), y: nl.mid, label: `nu ${eur(nl.mid)}` } : undefined} />
-        </Card>
-      )}
-
-      <MarketTabs kenteken={v.kenteken} nl={r.nl} de={r.de} importCost={r.importCost} links={r.links} askingPrice={price} mileage={km} transmission={transmission} />
+      <MarketTabs kenteken={v.kenteken} market={r.market} importCost={r.importCost} links={r.links} askingPrice={price} mileage={km} transmission={transmission} />
 
       {/* BPM */}
       <Card title="BPM" subtitle="Aanschafbelasting: wat er werkelijk is betaald, volgens het RDW-register">
@@ -280,7 +261,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         <ul className="mt-4 list-disc space-y-1 pl-5 text-xs text-muted">{r.bpm.assumptions.map((a) => <li key={a}>{a}</li>)}</ul>
       </Card>
 
-      {nl.mid == null && <p className="rounded-lg bg-warn-soft p-3 text-sm text-warn">Er is geen marktwaarde te schatten (catalogusprijs ontbreekt). Voor verzekering en waardevermindering is een generieke referentiewaarde van € {r.ownInputs.currentValue.toLocaleString("nl-NL")} gebruikt, gebaseerd op leeftijd. Pas de kosten daarom niet te letterlijk toe.</p>}
+      {r.marketValue == null && <p className="rounded-lg bg-warn-soft p-3 text-sm text-warn">Er zijn te weinig vergelijkbare advertenties voor een marktwaarde. Voor verzekering en waardevermindering is een generieke referentiewaarde van € {r.ownInputs.currentValue.toLocaleString("nl-NL")} gebruikt, gebaseerd op leeftijd. Pas de kosten daarom niet te letterlijk toe.</p>}
       <Calculator facts={ownershipFacts(v)} defaults={r.ownInputs} />
 
       <Card title="Bronnen & beperkingen">

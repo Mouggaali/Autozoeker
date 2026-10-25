@@ -2,7 +2,7 @@ import SearchForm from "@/components/SearchForm";
 
 const features = [
   ["Voertuigdata", "Specificaties, APK-historie, gebreken, terugroepacties en tellerstandoordeel rechtstreeks uit het RDW-register."],
-  ["Marktwaarde NL & DE", "Waardeschatting plus zoeklinks naar Marktplaats, AutoScout24 en mobile.de, met importkosten inclusief BPM."],
+  ["Marktprijs NL & DE", "Mediaan en bandbreedte van live advertenties met dezelfde transmissie en een vergelijkbaar vermogen, plus importkosten inclusief BPM."],
   ["Maandkosten", "MRB, brandstof, verzekering, onderhoud, afschrijving en financiering in een interactieve calculator."],
   ["Score 1–10", "Transparante score met uitleg, risico's en controles voor aankoop. Ontbrekende data verlaagt de zekerheid, niet het cijfer."],
 ];

@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { summarize } from "@/lib/ai";
 import { parseVehicleKey } from "@/lib/plate";
-import { buildReport, loadBundle } from "@/lib/report";
-import { parseTransmission } from "@/lib/transmission";
+import { loadReport } from "@/lib/report";
+
+export const maxDuration = 60;
 
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
   const key = parseVehicleKey(sp.get("kenteken") ?? "");
   if (!key || key.kind !== "plate") return NextResponse.json({ error: "Ongeldig kenteken" }, { status: 400 });
-  const loaded = await loadBundle(key.value);
-  if (!loaded) return NextResponse.json({ error: "Niet gevonden" }, { status: 404 });
-  const price = Number(sp.get("prijs"));
-  const km = Number(sp.get("km"));
-  const report = buildReport(loaded.bundle, { askingPrice: price > 0 ? price : undefined, mileage: km > 0 ? km : undefined, transmission: parseTransmission(sp.get("transmissie")) });
-  return NextResponse.json(await summarize(report));
+  const loaded = await loadReport(key.value, (k) => sp.get(k));
+  if (!loaded) return NextResponse.json({ error: "Kenteken niet gevonden bij de RDW" }, { status: 404 });
+  return NextResponse.json(await summarize(loaded.report));
 }

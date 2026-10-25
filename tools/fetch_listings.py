@@ -5,6 +5,7 @@ Invoer (stdin, JSON): {"make": "BMW", "model": "I3", "limit": 12,
                        "body": "hatchback"|"stationwagon"|"sedan"|"suv"|"mpv"|"coupe"|"cabrio"|null,
                        "fuel": "benzine"|"diesel"|"hybride"|"elektrisch"|null,
                        "transmission": "handgeschakeld"|"automaat"|null,
+                       "power_from": 75, "power_to": 110,   # kW; advertenties zonder bekend vermogen vallen dan af
                        "sources": ["marktplaats", "autoscout24_nl", "autoscout24_de"]}
 Uitvoer (stdout, JSON): {"listings": [...], "errors": {"bron": "melding"}}
 
@@ -65,6 +66,28 @@ def fuel_group(name: str | None) -> str | None:
     return "overig" if n else None
 
 
+POWER_RX = re.compile(r"(?<![\d.,])(\d{2,3})\s*(kw|pk|hp|ps)\b", re.I)
+
+
+def power_kw(*texts: str | None) -> int | None:
+    """Eerste vermogen in de teksten ('74 pk', '155KW', '96 kW (131 PK)') in kW; onwaarschijnlijke waarden vallen af."""
+    for t in texts:
+        for m in POWER_RX.finditer(t or ""):
+            n = int(m.group(1))
+            kw = n if m.group(2).lower() == "kw" else round(n * 0.7355)
+            if 30 <= kw <= 500:
+                return kw
+    return None
+
+
+def in_power_range(kw: int | None, f: dict) -> bool:
+    if not (f.get("power_from") or f.get("power_to")):
+        return True
+    if kw is None:
+        return False
+    return (not f.get("power_from") or kw >= f["power_from"]) and (not f.get("power_to") or kw <= f["power_to"])
+
+
 def transmission_group(name: str | None) -> str | None:
     """'Automaat', 'Automatisch', 'Automatik', 'Halbautomatik' -> automaat; 'Handgeschakeld', 'Schaltgetriebe' -> handgeschakeld."""
     n = (name or "").lower()
@@ -99,10 +122,28 @@ def slug(s: str) -> str:
 
 # ----------------------------------------------------------------- Marktplaats
 def marktplaats(make: str, model: str, f: dict) -> list[dict]:
+    import marktplaats.query as mq
     from marktplaats import SearchQuery, SortBy, SortOrder, category_from_name
 
     cars = category_from_name("Auto's")
-    q = SearchQuery(f"{make} {model}".strip(), category=cars, limit=100, sort_by=SortBy.OPTIMIZED, sort_order=SortOrder.ASC)
+    # De bibliotheek kent alleen een prijsbereik; het bouwjaarbereik geven we zelf mee aan de API,
+    # anders vallen de meeste van de 100 resultaten buiten de gezochte jaren.
+    ranges = []
+    if f.get("year_from") or f.get("year_to"):
+        ranges.append(f"constructionYear:{f.get('year_from') or ''}:{f.get('year_to') or ''}")
+    orig = mq.get_request
+
+    def get_with_ranges(url, params=None, **kw):
+        params = dict(params or {})
+        if ranges:
+            params["attributeRanges[]"] = list(params.get("attributeRanges[]", [])) + ranges
+        return orig(url, params=params, **kw)
+
+    mq.get_request = get_with_ranges
+    try:
+        q = SearchQuery(f"{make} {model}".strip(), category=cars, limit=100, sort_by=SortBy.OPTIMIZED, sort_order=SortOrder.ASC)
+    finally:
+        mq.get_request = orig
     out = []
     for l in q.get_listings():
         attrs = {a["key"]: a.get("value") for a in l.attributes}
@@ -111,6 +152,9 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
         body = body_group(attrs.get("body"))
         fg = fuel_group(attrs.get("fuel"))
         tg = transmission_group(attrs.get("transmission"))
+        ext = {a["key"]: a.get("value") for a in (l.extended_attributes or [])}
+        # Gestructureerd veld eerst; anders staat het vermogen vaak in titel of beschrijving ("2.0 GTI 155KW")
+        kw = power_kw(ext.get("engineHorsepower"), l.title, l.description)
         # Alleen echte auto's van dit model: titel of model-attribuut moet het model bevatten
         hay = f"{l.title} {attrs.get('model', '')}".lower()
         if model and model.lower().split()[0] not in hay:
@@ -131,6 +175,8 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
             continue
         if f.get("transmission") and tg != f["transmission"]:
             continue
+        if not in_power_range(kw, f):
+            continue
         out.append(
             {
                 "id": f"mp-{l.id}",
@@ -145,7 +191,8 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
                 "body": body,
                 "transmission": attrs.get("transmission"),
                 "transmissionGroup": tg,
-                "power": None,
+                "power": f"{kw} kW ({round(kw / 0.7355)} pk)" if kw else None,
+                "powerKw": kw,
                 "location": l.location.city if getattr(l.location, "city", None) else None,
                 "url": l.link,
                 "image": (l.first_image.medium if l.first_image else None),
@@ -174,6 +221,12 @@ def autoscout24(country: str, make: str, model: str, f: dict) -> list[dict]:
         base["body"] = BODY_AS24[f["body"]]
     if f.get("transmission") in GEAR_AS24:
         base["gear"] = GEAR_AS24[f["transmission"]]
+    if f.get("power_from") or f.get("power_to"):
+        base["powertype"] = "kw"
+        if f.get("power_from"):
+            base["powerfrom"] = f["power_from"]
+        if f.get("power_to"):
+            base["powerto"] = f["power_to"]
     fuels = FUEL_GROUP_AS24.get(f.get("fuel") or "", [None])
     url = f"https://{host}/lst/{slug(make)}/{slug(model)}"
     out: list[dict] = []
@@ -236,6 +289,7 @@ def _parse_as24(html: str, country: str, host: str, detail: str, make: str, mode
                 # Valt terug op het filter: AutoScout24 heeft dan al op transmissie geselecteerd
                 "transmissionGroup": transmission_group(gears.get(guid)) or f.get("transmission"),
                 "power": pw.get_text(" ", strip=True) if pw else None,
+                "powerKw": power_kw(pw.get_text(" ", strip=True)) if pw else None,
                 "location": location,
                 "url": f"https://{host}{paths.get(guid, f'/{detail}/{guid}')}",
                 "image": (img.get("src") if img and str(img.get("src", "")).startswith("http") else None),
@@ -248,7 +302,7 @@ def main() -> None:
     req = json.load(sys.stdin)
     make, model = req["make"], req["model"]
     limit = int(req.get("limit", 12))
-    filters = {k: req.get(k) for k in ("year_from", "year_to", "km_from", "km_to", "body", "fuel", "transmission")}
+    filters = {k: req.get(k) for k in ("year_from", "year_to", "km_from", "km_to", "body", "fuel", "transmission", "power_from", "power_to")}
     sources = req.get("sources", ["marktplaats", "autoscout24_nl", "autoscout24_de"])
     yf, yt = filters["year_from"], filters["year_to"]
     mid_year = (yf + yt) / 2 if yf and yt else None

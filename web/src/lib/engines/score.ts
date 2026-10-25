@@ -1,7 +1,23 @@
-import type { RdwBundle, ScoreComponent, ScoreResult, UserInputs, ValuationResult } from "../types";
+import type { PriceBand, RdwBundle, ScoreComponent, ScoreResult, UserInputs } from "../types";
 import type { OwnershipResult } from "./ownership";
 
 const clamp = (n: number, lo = 1, hi = 10) => Math.max(lo, Math.min(hi, n));
+const eur = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
+
+/** Marktreferentie voor het cijfer: live vraagprijzen van vergelijkbare auto's (zelfde transmissie, vermogensrange). */
+export interface MarketRef extends PriceBand {
+  label: string; // bijv. "12 vergelijkbare automaten in Nederland"
+}
+
+/**
+ * Referentieprijs voor een auto met deze kilometerstand: de mediaan, gecorrigeerd met 3% per 10.000 km
+ * afwijking van de mediane kilometerstand van dezelfde advertenties (max. ±15%).
+ */
+export function marketReference(m: MarketRef, mileage?: number): { price: number; kmAdj: number } {
+  if (mileage == null || m.medianKm == null) return { price: m.median, kmAdj: 0 };
+  const kmAdj = Math.max(-0.15, Math.min(0.15, (-(mileage - m.medianKm) / 10000) * 0.03));
+  return { price: m.median * (1 + kmAdj), kmAdj };
+}
 
 /**
  * Scoring: ontbrekende data (score = null) wordt uit de weging gehaald en verlaagt alleen
@@ -9,7 +25,7 @@ const clamp = (n: number, lo = 1, hi = 10) => Math.max(lo, Math.min(hi, n));
  */
 export function calcScore(
   b: RdwBundle,
-  nl: ValuationResult,
+  market: MarketRef | null,
   own: OwnershipResult | null,
   input: UserInputs,
 ): ScoreResult {
@@ -71,19 +87,23 @@ export function calcScore(
     comps.push({ id: "reliability", label: "Betrouwbaarheid & mechanische risico's", weight: 0.2, score: clamp(s), reasons });
   }
 
-  // 3. Markt & vraagprijs
+  // 3. Markt & vraagprijs: vergeleken met de live vraagprijzen van vergelijkbare auto's
   {
     const reasons: string[] = [];
     let s: number | null = null;
-    if (input.askingPrice && nl.mid) {
-      const ratio = input.askingPrice / nl.mid;
+    if (input.askingPrice && market) {
+      const ref = marketReference(market, input.mileage);
+      const ratio = input.askingPrice / ref.price;
       s = clamp(10 - (ratio - 0.9) * 12, 1, 10);
       if (ratio <= 0.9) s = 10;
-      reasons.push(`Vraagprijs € ${input.askingPrice.toLocaleString("nl-NL")} is ${(Math.abs(ratio - 1) * 100).toFixed(0)}% ${ratio > 1 ? "boven" : "onder"} de geschatte marktwaarde (€ ${nl.mid.toLocaleString("nl-NL")}${transmission && !v.isElektrisch ? `, ${transmission}` : ""}).`);
-      if (ratio > 1.15) risks.push({ level: "medium", text: "Vraagprijs ligt ruim boven de geschatte marktwaarde; onderhandel of vergelijk." });
-      if (ratio < 0.7) risks.push({ level: "high", text: "Vraagprijs ligt opvallend ver onder de marktwaarde: wees alert op fraude of verborgen gebreken." });
-    } else reasons.push(nl.mid ? "Geen vraagprijs ingevoerd; geen beoordeling." : "Geen marktwaarde beschikbaar.");
-    comps.push({ id: "market", label: "Marktwaarde & vraagprijs", weight: 0.2, score: s, reasons });
+      reasons.push(`Mediaan vraagprijs ${eur(market.median)} van ${market.label}; bandbreedte ${eur(market.low)} – ${eur(market.high)}.`);
+      if (ref.kmAdj !== 0) reasons.push(`Gecorrigeerd voor ${input.mileage!.toLocaleString("nl-NL")} km t.o.v. mediaan ${market.medianKm!.toLocaleString("nl-NL")} km: ${ref.kmAdj > 0 ? "+" : ""}${(ref.kmAdj * 100).toFixed(1)}% → referentie ${eur(ref.price)}.`);
+      reasons.push(`Vraagprijs ${eur(input.askingPrice)} is ${(Math.abs(ratio - 1) * 100).toFixed(0)}% ${ratio > 1 ? "boven" : "onder"} de referentie${input.askingPrice > market.high ? " en boven de bandbreedte" : input.askingPrice < market.low ? " en onder de bandbreedte" : ""}.`);
+      if (ratio > 1.15) risks.push({ level: "medium", text: "Vraagprijs ligt ruim boven wat vergelijkbare auto's kosten; onderhandel of vergelijk." });
+      if (ratio < 0.7) risks.push({ level: "high", text: "Vraagprijs ligt opvallend ver onder vergelijkbare auto's: wees alert op fraude of verborgen gebreken." });
+    } else if (!market) reasons.push("Te weinig vergelijkbare advertenties gevonden (minimaal 3 nodig); niet beoordeeld.");
+    else reasons.push(`Geen vraagprijs ingevoerd. Mediaan van ${market.label}: ${eur(market.median)} (${eur(market.low)} – ${eur(market.high)}).`);
+    comps.push({ id: "market", label: "Vraagprijs t.o.v. de markt", weight: 0.2, score: s, reasons });
   }
 
   // 4. Eigendomskosten
