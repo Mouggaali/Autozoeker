@@ -8,7 +8,7 @@ const body = Instrument_Sans({ variable: "--ff-body", subsets: ["latin"] });
 const mono = IBM_Plex_Mono({ variable: "--ff-mono", subsets: ["latin"], weight: ["400", "500", "600"] });
 
 export const metadata: Metadata = {
-  title: "AutoCheck – Check een auto op kenteken",
+  title: "AutoZoeker – Check een auto op kenteken",
   description: "Analyseer een auto op kenteken: RDW-gegevens, APK-historie, live marktprijzen NL/DE, BPM, maandkosten en een score van 1 tot 10.",
 };
 
@@ -19,8 +19,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
             <Link href="/" className="group flex items-center gap-2.5">
-              <span className="plate px-2 py-0.5 text-xs" style={{ borderLeftWidth: 10 }}>AC</span>
-              <span className="font-display text-lg font-extrabold tracking-tight">AutoCheck</span>
+              <span className="plate px-2 py-0.5 text-xs" style={{ borderLeftWidth: 10 }}>AZ</span>
+              <span className="font-display text-lg font-extrabold tracking-tight">AutoZoeker</span>
             </Link>
             <nav className="eyebrow hidden sm:block">Onafhankelijk · RDW · live markt</nav>
           </div>
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="flex-1">{children}</main>
         <footer className="mt-12 border-t border-line">
           <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-            <span className="eyebrow">AutoCheck</span>
+            <span className="eyebrow">AutoZoeker</span>
             <span>Gegevens: RDW Open Data, Marktplaats en AutoScout24. Indicatief; geen taxatie of financieel advies.</span>
           </div>
         </footer>

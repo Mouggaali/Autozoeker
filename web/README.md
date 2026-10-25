@@ -1,4 +1,4 @@
-# AutoCheck – auto-analyse op kenteken
+# AutoZoeker – auto-analyse op kenteken
 
 Next.js 16 · TypeScript · Tailwind. Nederlandstalig dashboard met RDW-data, APK-historie, waarde NL/DE, BPM, maandkosten en een score 1,0–10,0.
 
