@@ -3,13 +3,14 @@ import type { Provenance } from "@/lib/types";
 export const eur = (n: number | null | undefined, digits = 0) =>
   n == null ? "–" : n.toLocaleString("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: digits, minimumFractionDigits: digits });
 
-export function Card({ title, subtitle, children, className = "", id }: { title?: string; subtitle?: string; children: React.ReactNode; className?: string; id?: string }) {
+export function Card({ title, subtitle, eyebrow, children, className = "", id }: { title?: string; subtitle?: string; eyebrow?: string; children: React.ReactNode; className?: string; id?: string }) {
   return (
-    <section id={id} className={`rounded-2xl border border-line bg-card p-5 ${className}`}>
+    <section id={id} className={`surface rounded-xl p-5 sm:p-6 ${className}`}>
       {title && (
-        <div className="mb-4">
-          <h2 className="text-lg font-bold">{title}</h2>
-          {subtitle && <p className="text-sm text-muted">{subtitle}</p>}
+        <div className="mb-5 border-b border-line pb-4">
+          {eyebrow && <div className="eyebrow mb-1">{eyebrow}</div>}
+          <h2 className="text-xl font-bold">{title}</h2>
+          {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
         </div>
       )}
       {children}
@@ -25,63 +26,70 @@ const PROV: Record<Provenance, { label: string; cls: string; title: string }> = 
 };
 export function ProvBadge({ p }: { p: Provenance }) {
   const x = PROV[p];
-  return <span title={x.title} className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${x.cls}`}>{x.label}</span>;
+  return <span title={x.title} className={`inline-block whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] font-medium uppercase tracking-wider ${x.cls}`}>{x.label}</span>;
 }
 
 export function scoreColor(s: number) {
   return s >= 7.5 ? "var(--good)" : s >= 5.5 ? "var(--warn)" : "var(--bad)";
 }
 
-export function ScoreGauge({ score, size = 150 }: { score: number; size?: number }) {
-  const r = size / 2 - 12;
-  const c = 2 * Math.PI * r;
-  const frac = (score - 1) / 9;
+export function scoreVerdict(s: number) {
+  return s >= 7.5 ? "Goede koop" : s >= 5.5 ? "Voorzichtig" : "Risicovol";
+}
+
+/** Cijfer als groot getal met een balk van tien vakjes, zoals op een keuringsformulier. */
+export function ScoreGauge({ score }: { score: number }) {
+  const color = scoreColor(score);
   return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label={`Score ${score.toFixed(1)} van 10`}>
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth="12" />
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={scoreColor(score)} strokeWidth="12" strokeLinecap="round"
-        strokeDasharray={`${c * frac} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
-      <text x="50%" y="50%" textAnchor="middle" dominantBaseline="central" fontSize={size * 0.26} fontWeight="800" fill="var(--fg)">{score.toFixed(1)}</text>
-      <text x="50%" y={size * 0.68} textAnchor="middle" fontSize={size * 0.09} fill="var(--muted)">van 10</text>
-    </svg>
+    <div role="img" aria-label={`Score ${score.toFixed(1)} van 10: ${scoreVerdict(score)}`} className="w-full">
+      <div className="flex items-baseline gap-1">
+        <span className="font-display text-7xl font-extrabold leading-none tracking-tighter" style={{ color }}>{score.toFixed(1).replace(".", ",")}</span>
+        <span className="num text-lg text-muted">/10</span>
+      </div>
+      <div className="mt-3 grid grid-cols-10 gap-1">
+        {Array.from({ length: 10 }, (_, i) => {
+          const fill = Math.max(0, Math.min(1, score - i));
+          return (
+            <div key={i} className="h-2.5 overflow-hidden rounded-sm bg-line">
+              <div className="h-full" style={{ width: `${fill * 100}%`, background: color }} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
 export function Bar({ value, max = 10, color }: { value: number; max?: number; color?: string }) {
   return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-line">
+    <div className="h-1.5 w-full overflow-hidden rounded-full bg-line">
       <div className="h-full rounded-full" style={{ width: `${(value / max) * 100}%`, background: color ?? scoreColor(value) }} />
     </div>
   );
 }
 
-export function LineChart({ points, xLabel, yFormat, marker }: { points: { x: number; y: number }[]; xLabel: string; yFormat: (n: number) => string; marker?: { x: number; y: number; label: string } }) {
-  const W = 560, H = 220, P = { l: 56, r: 12, t: 12, b: 32 };
-  const xs = points.map((p) => p.x), ys = points.map((p) => p.y);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs), y1 = Math.max(...ys) * 1.05;
-  const sx = (x: number) => P.l + ((x - x0) / (x1 - x0 || 1)) * (W - P.l - P.r);
-  const sy = (y: number) => H - P.b - (y / (y1 || 1)) * (H - P.t - P.b);
-  const d = points.map((p, i) => `${i ? "L" : "M"}${sx(p.x).toFixed(1)},${sy(p.y).toFixed(1)}`).join(" ");
-  const ticks = [0, 0.5, 1].map((t) => t * y1);
+/**
+ * Prijsbalk: laagste–hoogste vraagprijs, de middelste 50% gearceerd, de mediaan als streep en
+ * (optioneel) de vraagprijs van de eigen auto als stip.
+ */
+export function PriceRange({ min, low, median, high, max, mark }: { min: number; low: number; median: number; high: number; max: number; mark?: number }) {
+  const lo = Math.min(min, mark ?? min), hi = Math.max(max, mark ?? max);
+  const pos = (n: number) => `${((n - lo) / (hi - lo || 1)) * 100}%`;
+  const markColor = mark == null ? undefined : mark > high ? "var(--bad)" : mark < low ? "var(--good)" : "var(--fg)";
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label="Grafiek">
-      {ticks.map((t) => (
-        <g key={t}>
-          <line x1={P.l} x2={W - P.r} y1={sy(t)} y2={sy(t)} stroke="var(--line)" />
-          <text x={P.l - 6} y={sy(t)} textAnchor="end" dominantBaseline="central" fontSize="11" fill="var(--muted)">{yFormat(t)}</text>
-        </g>
-      ))}
-      <path d={d} fill="none" stroke="var(--brand)" strokeWidth="2.5" />
-      {points.filter((_, i) => i % 2 === 0).map((p) => (
-        <text key={p.x} x={sx(p.x)} y={H - 10} textAnchor="middle" fontSize="11" fill="var(--muted)">{p.x}</text>
-      ))}
-      <text x={W - P.r} y={H - 0} textAnchor="end" fontSize="10" fill="var(--muted)">{xLabel}</text>
-      {marker && (
-        <g>
-          <circle cx={sx(marker.x)} cy={sy(marker.y)} r="6" fill="var(--bad)" stroke="var(--card)" strokeWidth="2" />
-          <text x={sx(marker.x) + 10} y={sy(marker.y) - 8} fontSize="11" fontWeight="700" fill="var(--fg)">{marker.label}</text>
-        </g>
-      )}
-    </svg>
+    <div className="pt-7 pb-6" role="img" aria-label={`Bandbreedte ${eur(low)} tot ${eur(high)}, mediaan ${eur(median)}${mark != null ? `, vraagprijs ${eur(mark)}` : ""}`}>
+      <div className="relative h-3 rounded-full bg-line">
+        <div className="absolute inset-y-0 rounded-full" style={{ left: pos(low), width: `calc(${pos(high)} - ${pos(low)})`, background: "color-mix(in srgb, var(--brand) 35%, transparent)" }} />
+        <div className="absolute -inset-y-1 w-0.5 rounded bg-brand" style={{ left: pos(median) }} />
+        <span className="num absolute -top-6 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold text-brand" style={{ left: pos(median) }}>mediaan {eur(median)}</span>
+        {mark != null && (
+          <>
+            <div className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card" style={{ left: pos(mark), background: markColor }} />
+            <span className="num absolute top-5 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold" style={{ left: pos(mark), color: markColor }}>jouw prijs {eur(mark)}</span>
+          </>
+        )}
+      </div>
+      <div className="num mt-1.5 flex justify-between text-[10px] text-muted"><span>{eur(lo)}</span><span>{eur(hi)}</span></div>
+    </div>
   );
 }

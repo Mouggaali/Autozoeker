@@ -31,24 +31,24 @@ export default function SearchForm({ compact = false }: { compact?: boolean }) {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Kenteken, bijv. G-001-BB"
           aria-label="Kenteken of VIN"
-          className="plate w-full flex-1 px-4 py-3 text-center text-xl placeholder:text-black/40 focus:outline-none focus:ring-4 focus:ring-brand/40"
+          className="plate w-full flex-1 px-4 py-3 text-center text-2xl placeholder:text-black/35 focus:outline-none focus:ring-4 focus:ring-brand/40"
           autoFocus={!compact}
         />
-        <button className="rounded-lg bg-brand px-6 py-3 font-semibold text-white hover:opacity-90">Check auto</button>
+        <button className="rounded-md bg-fg px-6 py-3 font-semibold text-bg transition hover:bg-brand hover:text-white">Check auto →</button>
       </div>
       {!compact && (
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          <label className="text-sm text-muted">
+          <label className="eyebrow">
             Vraagprijs (optioneel)
-            <input value={price} onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="€ 15.000" className="mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 text-fg" />
+            <input value={price} onChange={(e) => setPrice(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="€ 15.000" className="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2 font-sans text-sm normal-case tracking-normal text-fg" />
           </label>
-          <label className="text-sm text-muted">
+          <label className="eyebrow">
             Kilometerstand (optioneel)
-            <input value={km} onChange={(e) => setKm(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="85.000 km" className="mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 text-fg" />
+            <input value={km} onChange={(e) => setKm(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder="85.000 km" className="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2 font-sans text-sm normal-case tracking-normal text-fg" />
           </label>
-          <label className="col-span-2 text-sm text-muted sm:col-span-1">
+          <label className="eyebrow col-span-2 sm:col-span-1">
             Transmissie (optioneel)
-            <select value={transmission} onChange={(e) => setTransmission(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-card px-3 py-2 text-fg">
+            <select value={transmission} onChange={(e) => setTransmission(e.target.value)} className="mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2 font-sans text-sm normal-case tracking-normal text-fg">
               <option value="">Weet ik niet</option>
               <option value="handgeschakeld">Handgeschakeld</option>
               <option value="automaat">Automaat</option>

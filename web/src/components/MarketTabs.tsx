@@ -3,7 +3,7 @@ import { useState } from "react";
 import type { MarketData } from "@/lib/market";
 import type { SearchLink } from "@/lib/providers/market";
 import type { ImportCostResult, PriceBand, TransmissionGroup } from "@/lib/types";
-import { Card, ProvBadge, eur, scoreColor } from "./ui";
+import { Card, PriceRange, ProvBadge, eur, scoreColor } from "./ui";
 
 interface Props {
   kenteken: string;
@@ -22,7 +22,7 @@ const TR_LABEL: Record<TransmissionGroup, string> = { automaat: "Automaat", hand
 
 function GradeChip({ grade, confidence }: { grade: number; confidence: string }) {
   return (
-    <span className="inline-grid h-9 w-9 place-items-center rounded-lg text-sm font-extrabold text-white" style={{ background: scoreColor(grade) }} title={`Cijfer ${grade.toFixed(1)} van 10 (zekerheid: ${confidence.toLowerCase()}, op basis van advertentiegegevens)`}>
+    <span className="num inline-grid h-10 w-10 flex-none place-items-center rounded-md text-sm font-semibold text-white" style={{ background: scoreColor(grade) }} title={`Cijfer ${grade.toFixed(1)} van 10 (zekerheid: ${confidence.toLowerCase()}, op basis van advertentiegegevens)`}>
       {grade.toFixed(1)}
     </span>
   );
@@ -32,8 +32,9 @@ function BandBlock({ band, country, askingPrice, what }: { band: PriceBand | nul
   if (!band) return <p className="mt-1 text-sm text-muted">Te weinig advertenties gevonden (minimaal 3) voor een mediaan en bandbreedte.</p>;
   return (
     <>
-      <div className="mt-1 text-3xl font-extrabold">{eur(band.median)}</div>
-      <div className="text-sm font-semibold">Bandbreedte {eur(band.low)} – {eur(band.high)}</div>
+      <div className="num mt-1 text-4xl font-semibold">{eur(band.median)}</div>
+      <div className="num text-sm">Bandbreedte {eur(band.low)} – {eur(band.high)}</div>
+      <PriceRange min={band.min} low={band.low} median={band.median} high={band.high} max={band.max} mark={country === "NL" ? askingPrice : undefined} />
       <div className="text-xs text-muted">Middelste 50% van de vraagprijzen; laagste {eur(band.min)}, hoogste {eur(band.max)}{band.medianKm ? `; mediane km-stand ${band.medianKm.toLocaleString("nl-NL")} km` : ""}.</div>
       {askingPrice && country === "NL" && (
         <div className={`mt-2 text-sm font-semibold ${askingPrice > band.high ? "text-bad" : askingPrice < band.low ? "text-good" : ""}`}>
@@ -63,11 +64,11 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
   const defaultHref = `?${new URLSearchParams(own)}#markt`;
 
   return (
-    <Card title="Marktvergelijking" subtitle="Live advertenties van Marktplaats en AutoScout24. De mediaan vraagprijs bepaalt het marktdeel van het cijfer.">
+    <Card eyebrow="Live markt" title="Marktvergelijking" subtitle="Live advertenties van Marktplaats en AutoScout24. De mediaan vraagprijs bepaalt het marktdeel van het cijfer.">
       <div id="markt" role="tablist" className="mb-4 inline-flex scroll-mt-24 rounded-lg border border-line p-1">
         {(["NL", "DE"] as const).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-            className={`rounded-md px-4 py-1.5 text-sm font-semibold ${tab === t ? "bg-brand text-white" : "text-muted"}`}>
+            className={`rounded px-4 py-1.5 text-sm font-semibold ${tab === t ? "bg-fg text-bg" : "text-muted hover:text-fg"}`}>
             {t === "NL" ? "🇳🇱 Nederland" : "🇩🇪 Duitsland"}
           </button>
         ))}
@@ -77,12 +78,12 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
 
       {market && !market.failed && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-xl bg-good-soft p-4">
-            <div className="flex items-center gap-2 text-sm text-muted">Mediaan vraagprijs live <ProvBadge p="verified" /></div>
+          <div className="rounded-lg border border-line bg-bg/40 p-4">
+            <div className="eyebrow flex items-center gap-2">Mediaan vraagprijs live <ProvBadge p="verified" /></div>
             <BandBlock band={band} country={tab} askingPrice={askingPrice} what={what} />
           </div>
-          <div className="rounded-xl border border-line p-4 text-sm">
-            <div className="text-sm text-muted">Waarmee is vergeleken</div>
+          <div className="rounded-lg border border-line p-4 text-sm">
+            <div className="eyebrow">Waarmee is vergeleken</div>
             <ul className="mt-2 space-y-1">
               <li>Bouwjaar: <b>{f?.yearFrom || f?.yearTo ? `${f?.yearFrom ?? "…"} – ${f?.yearTo ?? "…"}` : "alle"}</b></li>
               <li>Vermogen: <b>{f?.pkFrom || f?.pkTo ? `${f?.pkFrom ?? "…"} – ${f?.pkTo ?? "…"} pk` : "alle"}</b></li>
@@ -175,7 +176,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
             </label>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Filter toepassen</button>
+            <button className="rounded-md bg-fg px-4 py-2 text-sm font-semibold text-bg hover:bg-brand hover:text-white">Filter toepassen</button>
             <span className="text-xs text-muted">Standaard: zelfde brandstof{transmission ? " en transmissie" : ""}, bouwjaar ±1, vermogen ±20%. Het cijfer wordt herberekend met de gefilterde auto&apos;s.</span>
           </div>
         </form>
@@ -200,7 +201,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3">
                   <a href={l.url} target="_blank" rel="noopener noreferrer" className="truncate font-semibold text-brand hover:underline">{l.title} ↗</a>
-                  <span className="font-extrabold tabular-nums">{eur(l.price)}</span>
+                  <span className="num font-semibold">{eur(l.price)}</span>
                 </div>
                 <div className="text-xs text-muted">
                   {l.platform} · {[l.year, l.mileage != null ? `${l.mileage.toLocaleString("nl-NL")} km` : null, l.fuel, l.transmissionGroup ? TR_LABEL[l.transmissionGroup] : l.transmission, l.power, l.location].filter(Boolean).join(" · ")}

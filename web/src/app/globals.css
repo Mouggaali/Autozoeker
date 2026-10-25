@@ -1,37 +1,63 @@
 @import "tailwindcss";
 
+/*
+ * Ontwerprichting "keuringsrapport": warm papier, inktzwart, RDW-blauw als accent en kentekengeel
+ * als signatuur. Cijfers en labels in monospace, zoals op een keuringsformulier.
+ */
 :root {
-  --bg: #f4f6fa;
-  --card: #ffffff;
-  --fg: #0f1b2d;
-  --muted: #5b6a82;
-  --line: #e1e6ef;
-  --brand: #1257d6;
-  --brand-soft: #e7efff;
-  --good: #14804a;
-  --warn: #b7791f;
-  --bad: #c0392b;
-  --good-soft: #e3f6ec;
-  --warn-soft: #fdf3dc;
-  --bad-soft: #fde9e6;
+  --bg: #f3efe6;
+  --card: #fffdf8;
+  --fg: #17140f;
+  --muted: #6d6659;
+  --line: #e0d9ca;
+  --brand: #1f3fc4;
+  --brand-soft: #e6e9fb;
+  --plate: #f6c90e;
+  --plate-ink: #17140f;
+  --good: #1d7a45;
+  --warn: #a8660b;
+  --bad: #b93222;
+  --good-soft: #e2f2e6;
+  --warn-soft: #fbefd6;
+  --bad-soft: #fbe5e0;
+  --shadow: 0 1px 0 rgba(23, 20, 15, 0.04), 0 8px 24px -12px rgba(23, 20, 15, 0.12);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b111c;
-    --card: #131b2a;
-    --fg: #e8edf6;
-    --muted: #93a1b8;
-    --line: #243049;
-    --brand: #6ea0ff;
-    --brand-soft: #172742;
-    --good: #4cc98b;
-    --warn: #e5b04a;
-    --bad: #ff7b6b;
-    --good-soft: #12301f;
-    --warn-soft: #34290f;
-    --bad-soft: #3a1a16;
+  :root:not([data-theme="light"]) {
+    --bg: #12110d;
+    --card: #1b1915;
+    --fg: #f2ede3;
+    --muted: #a59d8e;
+    --line: #2f2c25;
+    --brand: #93a6ff;
+    --brand-soft: #1d2242;
+    --plate: #f6c90e;
+    --plate-ink: #17140f;
+    --good: #5fcf8d;
+    --warn: #e9b153;
+    --bad: #ff8a77;
+    --good-soft: #15291c;
+    --warn-soft: #33270f;
+    --bad-soft: #391b16;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
   }
+}
+:root[data-theme="dark"] {
+  --bg: #12110d;
+  --card: #1b1915;
+  --fg: #f2ede3;
+  --muted: #a59d8e;
+  --line: #2f2c25;
+  --brand: #93a6ff;
+  --brand-soft: #1d2242;
+  --good: #5fcf8d;
+  --warn: #e9b153;
+  --bad: #ff8a77;
+  --good-soft: #15291c;
+  --warn-soft: #33270f;
+  --bad-soft: #391b16;
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
 }
 
 @theme inline {
@@ -42,28 +68,75 @@
   --color-line: var(--line);
   --color-brand: var(--brand);
   --color-brand-soft: var(--brand-soft);
+  --color-plate: var(--plate);
   --color-good: var(--good);
   --color-warn: var(--warn);
   --color-bad: var(--bad);
   --color-good-soft: var(--good-soft);
   --color-warn-soft: var(--warn-soft);
   --color-bad-soft: var(--bad-soft);
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-sans: var(--ff-body), system-ui, sans-serif;
+  --font-display: var(--ff-display), var(--ff-body), system-ui, sans-serif;
+  --font-mono: var(--ff-mono), ui-monospace, monospace;
 }
 
 body {
   background: var(--bg);
   color: var(--fg);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--ff-body), system-ui, sans-serif;
+  /* Subtiele papierstructuur */
+  background-image: radial-gradient(color-mix(in srgb, var(--fg) 5%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+h1, h2, h3 {
+  font-family: var(--ff-display), var(--ff-body), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Labels in formulierstijl: kleine monospace kapitalen */
+.eyebrow {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.num {
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 .plate {
-  background: #f8c70a;
-  color: #111;
-  border: 2px solid #111;
+  background: var(--plate);
+  color: var(--plate-ink);
+  border: 2px solid var(--plate-ink);
   border-left: 22px solid #0b3fa8;
   border-radius: 6px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-family: var(--ff-mono), ui-monospace, monospace;
+  font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+
+.surface {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+input, select, textarea {
+  accent-color: var(--brand);
+}
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .rise { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 }
