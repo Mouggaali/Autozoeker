@@ -257,7 +257,8 @@ def autoscout24(country: str, make: str, model: str, f: dict) -> list[dict]:
 def _parse_as24(html: str, country: str, host: str, detail: str, make: str, model: str, f: dict, seen: set) -> list[dict]:
     # Volledige detail-URL's staan als JSON in de pagina; guid -> pad
     paths = {}
-    for m in re.finditer(r'"url":"(\\u002F(?:aanbod|angebote)\\u002F[^"]+)"', html):
+    # Meestal escaped ("/aanbod/..."), soms met gewone slashes
+    for m in re.finditer(r'"url":"((?:\\u002F|/)(?:aanbod|angebote)(?:\\u002F|/)[^"]+)"', html):
         p = m.group(1).replace("\\u002F", "/")
         g = re.search(r"([0-9a-f]{8}-[0-9a-f-]{27})$", p.rstrip("/"))
         if g:

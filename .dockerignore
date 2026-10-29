@@ -8,3 +8,6 @@
 web/.data
 credentials.json
 token.json
+tools/tests
+web/src/**/*.test.ts
+web/src/lib/__fixtures__
