@@ -11,6 +11,8 @@ import { type MarketRef, calcScore, marketReference } from "./score";
  * en tellen dus niet mee; ze verlagen alleen de betrouwbaarheid.
  * Het cijfer beoordeelt de auto zoals geadverteerd, niet de technische staat.
  */
+const eur = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
+
 export function gradeListings(
   bundle: RdwBundle,
   listings: Listing[],
@@ -62,10 +64,16 @@ export function gradeListings(
     const reasons: string[] = [];
     const flags: string[] = [];
     if (market) {
-      const r = marketReference(market, km);
-      const pct = Math.round(Math.abs(effectivePrice / r.price - 1) * 100);
-      const what = r.kmAdj !== 0 ? "de km-gecorrigeerde mediaan" : "de mediaan";
-      reasons.push(pct < 3 ? `in lijn met ${what}` : `${pct}% ${effectivePrice > r.price ? "boven" : "onder"} ${what}${l.country === "DE" ? " (incl. import)" : ""}`);
+      const r = marketReference(market, km, year, now);
+      const diff = effectivePrice - r.price;
+      const incl = l.country === "DE" ? " (incl. import)" : "";
+      if (r.method === "model") {
+        reasons.push(Math.abs(diff) < r.price * 0.03 ? `rond de eerlijke prijs (${eur(r.price)})` : `${eur(Math.abs(diff))} ${diff > 0 ? "boven" : "onder"} de eerlijke prijs van ${eur(r.price)}${incl}`);
+      } else {
+        const pct = Math.round(Math.abs(effectivePrice / r.price - 1) * 100);
+        const what = r.kmAdj !== 0 ? "de km-gecorrigeerde mediaan" : "de mediaan";
+        reasons.push(pct < 3 ? `in lijn met ${what}` : `${pct}% ${diff > 0 ? "boven" : "onder"} ${what}${incl}`);
+      }
       if (effectivePrice / r.price < 0.65) flags.push("Opvallend goedkoop: wees alert op fraude of verborgen gebreken");
     }
     if (ref.transmission && l.transmissionGroup && l.transmissionGroup !== ref.transmission) reasons.push(`andere transmissie (${l.transmissionGroup})`);

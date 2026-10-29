@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { calcBpm } from "./engines/bpm";
 import { calcOwnership, defaultInputs, ownershipFacts } from "./engines/ownership";
-import { calcScore } from "./engines/score";
+import { calcScore, marketReference } from "./engines/score";
 import { estimateImport } from "./engines/valuation";
 import { type MarketData, type Params, loadMarket, parseFilters } from "./market";
 import { searchLinks } from "./providers/market";
@@ -49,12 +49,16 @@ export function buildReport(bundle: RdwBundle, input: UserInputs, market: Market
   const ownInputs = defaultInputs(v, marketValue);
   const ownership = calcOwnership(ownershipFacts(v), ownInputs);
   const score = calcScore(bundle, market?.reference ?? null, ownership, input);
+  // Eerlijke prijs voor deze auto (bouwjaar + km), alleen met een geloofwaardig regressiemodel
+  const fairRef = market?.reference?.model && input.mileage ? marketReference(market.reference, input.mileage, v.bouwjaar) : null;
+  const fair = fairRef?.method === "model" ? { mid: fairRef.price, low: fairRef.low!, high: fairRef.high!, source: market!.reference!.source } : null;
   return {
     bundle,
     specs: buildSpecs(bundle),
     timeline: buildTimeline(bundle),
     market,
     marketValue,
+    fair,
     bpm,
     importCost,
     ownInputs,

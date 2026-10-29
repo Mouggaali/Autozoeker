@@ -1,4 +1,5 @@
 import type { PriceBand, RdwBundle, ScoreComponent, ScoreResult, UserInputs } from "../types";
+import { type FairPriceModel, fairPrice, kmEffect } from "./fairPrice";
 import type { OwnershipResult } from "./ownership";
 
 const clamp = (n: number, lo = 1, hi = 10) => Math.max(lo, Math.min(hi, n));
@@ -7,16 +8,31 @@ const eur = (n: number) => `€ ${Math.round(n).toLocaleString("nl-NL")}`;
 /** Marktreferentie voor het cijfer: live vraagprijzen van vergelijkbare auto's (zelfde transmissie, vermogensrange). */
 export interface MarketRef extends PriceBand {
   label: string; // bijv. "12 vergelijkbare automaten in Nederland"
+  /** Regressie op dezelfde advertenties; null als die niet geloofwaardig is (te weinig data, lage R²) */
+  model?: FairPriceModel | null;
+}
+
+export interface Reference {
+  price: number;
+  low?: number;
+  high?: number;
+  method: "model" | "median";
+  kmAdj: number; // alleen bij "median": correctie t.o.v. de mediane km-stand
 }
 
 /**
- * Referentieprijs voor een auto met deze kilometerstand: de mediaan, gecorrigeerd met 3% per 10.000 km
- * afwijking van de mediane kilometerstand van dezelfde advertenties (max. ±15%).
+ * Referentieprijs voor een auto van dit bouwjaar met deze kilometerstand.
+ * - Met een geloofwaardig regressiemodel: de eerlijke prijs voor precies dit bouwjaar en deze km.
+ * - Anders: de mediaan, gecorrigeerd met 3% per 10.000 km afwijking van de mediane km-stand (max. ±15%).
  */
-export function marketReference(m: MarketRef, mileage?: number): { price: number; kmAdj: number } {
-  if (mileage == null || m.medianKm == null) return { price: m.median, kmAdj: 0 };
+export function marketReference(m: MarketRef, mileage?: number, year?: number | null, now = new Date()): Reference {
+  if (m.model && mileage != null) {
+    const f = fairPrice(m.model, year ?? null, mileage, now);
+    return { price: f.mid, low: f.low, high: f.high, method: "model", kmAdj: 0 };
+  }
+  if (mileage == null || m.medianKm == null) return { price: m.median, method: "median", kmAdj: 0 };
   const kmAdj = Math.max(-0.15, Math.min(0.15, (-(mileage - m.medianKm) / 10000) * 0.03));
-  return { price: m.median * (1 + kmAdj), kmAdj };
+  return { price: m.median * (1 + kmAdj), method: "median", kmAdj };
 }
 
 /**
@@ -92,13 +108,16 @@ export function calcScore(
     const reasons: string[] = [];
     let s: number | null = null;
     if (input.askingPrice && market) {
-      const ref = marketReference(market, input.mileage);
+      const ref = marketReference(market, input.mileage, v.bouwjaar, now);
       const ratio = input.askingPrice / ref.price;
       s = clamp(10 - (ratio - 0.9) * 12, 1, 10);
       if (ratio <= 0.9) s = 10;
       reasons.push(`Mediaan vraagprijs ${eur(market.median)} van ${market.label}; bandbreedte ${eur(market.low)} – ${eur(market.high)}.`);
-      if (ref.kmAdj !== 0) reasons.push(`Gecorrigeerd voor ${input.mileage!.toLocaleString("nl-NL")} km t.o.v. mediaan ${market.medianKm!.toLocaleString("nl-NL")} km: ${ref.kmAdj > 0 ? "+" : ""}${(ref.kmAdj * 100).toFixed(1)}% → referentie ${eur(ref.price)}.`);
-      reasons.push(`Vraagprijs ${eur(input.askingPrice)} is ${(Math.abs(ratio - 1) * 100).toFixed(0)}% ${ratio > 1 ? "boven" : "onder"} de referentie${input.askingPrice > market.high ? " en boven de bandbreedte" : input.askingPrice < market.low ? " en onder de bandbreedte" : ""}.`);
+      if (ref.method === "model" && market.model) {
+        reasons.push(`Eerlijke prijs voor ${v.bouwjaar ?? "dit bouwjaar"} met ${input.mileage!.toLocaleString("nl-NL")} km: ${eur(ref.price)} (${eur(ref.low!)} – ${eur(ref.high!)}); model op ${market.model.n} advertenties, R² ${market.model.r2.toFixed(2).replace(".", ",")}, ${(kmEffect(market.model) * 100).toFixed(1).replace(".", ",")}% per 10.000 km.`);
+      } else if (ref.kmAdj !== 0) reasons.push(`Gecorrigeerd voor ${input.mileage!.toLocaleString("nl-NL")} km t.o.v. mediaan ${market.medianKm!.toLocaleString("nl-NL")} km: ${ref.kmAdj > 0 ? "+" : ""}${(ref.kmAdj * 100).toFixed(1)}% → referentie ${eur(ref.price)}.`);
+      const refName = ref.method === "model" ? "de eerlijke prijs" : "de referentie";
+      reasons.push(`Vraagprijs ${eur(input.askingPrice)} is ${(Math.abs(ratio - 1) * 100).toFixed(0)}% ${ratio > 1 ? "boven" : "onder"} ${refName}${input.askingPrice > market.high ? " en boven de bandbreedte" : input.askingPrice < market.low ? " en onder de bandbreedte" : ""}.`);
       if (ratio > 1.15) risks.push({ level: "medium", text: "Vraagprijs ligt ruim boven wat vergelijkbare auto's kosten; onderhandel of vergelijk." });
       if (ratio < 0.7) risks.push({ level: "high", text: "Vraagprijs ligt opvallend ver onder vergelijkbare auto's: wees alert op fraude of verborgen gebreken." });
     } else if (!market) reasons.push("Te weinig vergelijkbare advertenties gevonden (minimaal 3 nodig); niet beoordeeld.");

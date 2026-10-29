@@ -7,7 +7,17 @@ const marketScore = (r: ReturnType<typeof calcScore>) => r.components.find((c) =
 
 describe("marketReference", () => {
   it("gebruikt de mediaan zonder kilometerstand", () => {
-    expect(marketReference(market)).toEqual({ price: 8000, kmAdj: 0 });
+    expect(marketReference(market)).toEqual({ price: 8000, method: "median", kmAdj: 0 });
+  });
+
+  it("gebruikt de eerlijke prijs van het model als dat er is", () => {
+    const model = { a: Math.log(12000), b: 0, c: -0.04, n: 15, r2: 0.7, sigma: 0.1, kmRange: [50000, 200000] as [number, number] };
+    const ref = marketReference({ ...market, model }, 100000, 2017);
+    expect(ref.method).toBe("model");
+    expect(ref.price).toBe(Math.round((12000 * Math.exp(-0.4)) / 50) * 50);
+    expect(ref.low!).toBeLessThan(ref.price);
+    // zonder km valt het terug op de mediaan
+    expect(marketReference({ ...market, model }).method).toBe("median");
   });
 
   it("corrigeert 3% per 10.000 km afwijking, begrensd op ±15%", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bundles, listing } from "./__fixtures__";
+import { bundles, listing, listings308Automaat } from "./__fixtures__";
 import { analyzeMarket, cleanPeers, parseFilters, priceBand } from "./market";
 
 const params = (o: Record<string, string>) => (k: string) => (k in o ? o[k] : null);
@@ -95,5 +95,14 @@ describe("analyzeMarket", () => {
     expect(m.nl?.min).toBe(7000);
     expect(m.listings.find((l) => l.id === bad.id)?.excluded).toContain("export");
     expect(m.reference?.source).toBe("NL");
+  });
+});
+
+describe("analyzeMarket op echte advertenties (Peugeot 308 automaat 2016–2018)", () => {
+  it("maakt een geloofwaardig prijsmodel: meer km = lagere prijs", () => {
+    const m = analyzeMarket(bundles.peugeot308, listings308Automaat, { transmission: "automaat" }, 2000);
+    const model = m.reference?.model;
+    expect(model).toBeTruthy();
+    expect(model!.c).toBeLessThan(0);
   });
 });

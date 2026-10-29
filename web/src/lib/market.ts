@@ -1,3 +1,4 @@
+import { fitFairPrice } from "./engines/fairPrice";
 import { gradeListings } from "./engines/listingGrade";
 import type { MarketRef } from "./engines/score";
 import { estimateImport } from "./engines/valuation";
@@ -184,10 +185,11 @@ export function analyzeMarket(
   const nl = priceBand(nlPeers);
   const de = priceBand(dePeers);
   const deEff = priceBand(dePeers, importExtras);
+  // Eerlijke prijs: regressie op dezelfde (opgeschoonde) advertenties als de referentie; Duits incl. importkosten
   const reference = nl
-    ? { ...nl, label: `${nl.count} vergelijkbare ${what} in Nederland`, source: "NL" as const }
+    ? { ...nl, label: `${nl.count} vergelijkbare ${what} in Nederland`, source: "NL" as const, model: fitFairPrice(nlPeers) }
     : deEff
-      ? { ...deEff, label: `${deEff.count} vergelijkbare ${what} in Duitsland (incl. importkosten)`, source: "DE" as const }
+      ? { ...deEff, label: `${deEff.count} vergelijkbare ${what} in Duitsland (incl. importkosten)`, source: "DE" as const, model: fitFairPrice(dePeers.map((l) => ({ ...l, price: l.price + importExtras }))) }
       : null;
 
   const graded = gradeListings(bundle, listings, importExtras, reference, ref).map((g) => {

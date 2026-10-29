@@ -13,6 +13,7 @@ interface Props {
   askingPrice?: number;
   mileage?: number;
   transmission?: TransmissionGroup;
+  fair?: { mid: number; low: number; high: number; source: "NL" | "DE" } | null;
 }
 
 const fieldCls = "mt-1 w-full rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-fg";
@@ -28,13 +29,13 @@ function GradeChip({ grade, confidence }: { grade: number; confidence: string })
   );
 }
 
-function BandBlock({ band, country, askingPrice, what }: { band: PriceBand | null; country: "NL" | "DE"; askingPrice?: number; what: string }) {
+function BandBlock({ band, country, askingPrice, what, fair }: { band: PriceBand | null; country: "NL" | "DE"; askingPrice?: number; what: string; fair?: Props["fair"] }) {
   if (!band) return <p className="mt-1 text-sm text-muted">Te weinig advertenties gevonden (minimaal 3) voor een mediaan en bandbreedte.</p>;
   return (
     <>
       <div className="num mt-1 text-4xl font-semibold">{eur(band.median)}</div>
       <div className="num text-sm">Bandbreedte {eur(band.low)} – {eur(band.high)}</div>
-      <PriceRange min={band.min} low={band.low} median={band.median} high={band.high} max={band.max} mark={country === "NL" ? askingPrice : undefined} />
+      <PriceRange min={band.min} low={band.low} median={band.median} high={band.high} max={band.max} mark={country === "NL" ? askingPrice : undefined} fair={fair?.source === country ? fair.mid : undefined} />
       <div className="text-xs text-muted">Middelste 50% van de vraagprijzen; laagste {eur(band.min)}, hoogste {eur(band.max)}{band.medianKm ? `; mediane km-stand ${band.medianKm.toLocaleString("nl-NL")} km` : ""}.</div>
       {askingPrice && country === "NL" && (
         <div className={`mt-2 text-sm font-semibold ${askingPrice > band.high ? "text-bad" : askingPrice < band.low ? "text-good" : ""}`}>
@@ -46,7 +47,7 @@ function BandBlock({ band, country, askingPrice, what }: { band: PriceBand | nul
   );
 }
 
-export default function MarketTabs({ kenteken, market, importCost, links, askingPrice, mileage, transmission }: Props) {
+export default function MarketTabs({ kenteken, market, importCost, links, askingPrice, mileage, transmission, fair }: Props) {
   const [tab, setTab] = useState<"NL" | "DE">("NL");
   const f = market?.filters;
   const what = market?.comparedTransmission ? TR_PLURAL[market.comparedTransmission] : "vergelijkbare auto's";
@@ -81,7 +82,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-lg border border-line bg-bg/40 p-4">
             <div className="eyebrow flex items-center gap-2">Mediaan vraagprijs live <ProvBadge p="verified" /></div>
-            <BandBlock band={band} country={tab} askingPrice={askingPrice} what={what} />
+            <BandBlock band={band} country={tab} askingPrice={askingPrice} what={what} fair={fair} />
           </div>
           <div className="rounded-lg border border-line p-4 text-sm">
             <div className="eyebrow">Waarmee is vergeleken</div>

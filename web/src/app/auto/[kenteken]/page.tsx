@@ -125,9 +125,20 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
           </div>
           {r.market?.reference && (
             <a href="#markt" className="block rounded-lg border border-line bg-card p-3 text-sm hover:border-brand">
-              <div className="eyebrow">Mediaan vergelijkbare auto&apos;s</div>
-              <div className="num mt-1 text-2xl font-semibold">{eur(r.market.reference.median)}</div>
-              <div className="num text-xs text-muted">{eur(r.market.reference.low)} – {eur(r.market.reference.high)} · {r.market.reference.count} advertenties →</div>
+              {r.fair ? (
+                <>
+                  <div className="eyebrow">Eerlijke prijs voor {km!.toLocaleString("nl-NL")} km</div>
+                  <div className="num mt-1 text-2xl font-semibold">{eur(r.fair.mid)}</div>
+                  <div className="num text-xs text-muted">{eur(r.fair.low)} – {eur(r.fair.high)}{r.fair.source === "DE" ? " · DE incl. import" : ""}</div>
+                  <div className="num mt-2 border-t border-line pt-2 text-xs text-muted">Mediaan {eur(r.market.reference.median)} · {r.market.reference.count} advertenties →</div>
+                </>
+              ) : (
+                <>
+                  <div className="eyebrow">Mediaan vergelijkbare auto&apos;s</div>
+                  <div className="num mt-1 text-2xl font-semibold">{eur(r.market.reference.median)}</div>
+                  <div className="num text-xs text-muted">{eur(r.market.reference.low)} – {eur(r.market.reference.high)} · {r.market.reference.count} advertenties →</div>
+                </>
+              )}
             </a>
           )}
         </div>
@@ -259,7 +270,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         )}
       </Card>
 
-      <MarketTabs kenteken={v.kenteken} market={r.market} importCost={r.importCost} links={r.links} askingPrice={price} mileage={km} transmission={transmission} />
+      <MarketTabs kenteken={v.kenteken} market={r.market} importCost={r.importCost} links={r.links} askingPrice={price} mileage={km} transmission={transmission} fair={r.fair} />
 
       {/* BPM */}
       <Card title="BPM" subtitle="Aanschafbelasting: wat er werkelijk is betaald, volgens het RDW-register">
