@@ -38,6 +38,34 @@ class TestPowerKw(unittest.TestCase):
         self.assertTrue(fl.in_power_range(None, {}))
 
 
+class TestNoise(unittest.TestCase):
+    def test_detects_noise(self):
+        cases = {
+            "Golf 1.4 TSI lichte schade voorzijde": "schade",
+            "Golf met hagelschade": "schade",
+            "308 EXPORT PRIJS ex BPM": "export",
+            "Opknapper, motor loopt": "opknapper",
+            "Motor defect, verder netjes": "defect",
+            "Auto start niet": "defect",
+            "Lease overname mogelijk": "lease-overname",
+            "Voor onderdelen of sloop": "onderdelen",
+            "Rijdt goed, zonder APK": "zonder APK",
+        }
+        for text, reason in cases.items():
+            self.assertEqual(fl.noise_reason(text), reason, text)
+
+    def test_ignores_negations_and_normal_ads(self):
+        for text in (
+            "Schadevrij, NAP, dealeronderhouden",
+            "Geen schade, nieuwe APK",
+            "Auto heeft nooit schade gehad",
+            "Volkswagen Golf 1.4 TSI Highline | Navi | Clima",
+            "Geen motorproblemen, inruil mogelijk",
+            None,
+        ):
+            self.assertIsNone(fl.noise_reason(text), text)
+
+
 class TestGroups(unittest.TestCase):
     def test_transmission(self):
         for s in ("Automaat", "Automatisch", "Automatik", "Halbautomatik", "DSG"):

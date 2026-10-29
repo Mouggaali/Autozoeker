@@ -71,6 +71,59 @@ export function priceBand(listings: Listing[], extra = 0): PriceBand | null {
   };
 }
 
+export interface Excluded {
+  noise: number; // schade, export, opknapper, ...
+  duplicates: number; // dezelfde auto op meerdere platforms
+  outliers: number; // prijs ver buiten de rest (IQR-regel)
+}
+
+/**
+ * Advertenties die de marktprijs vertekenen eruit halen, in deze volgorde:
+ * 1. ruis volgens de scraper (schade, export, opknapper, defect, lease-overname, zonder APK)
+ * 2. dubbele advertenties: zelfde auto op meerdere platforms (zelfde bouwjaar, prijs en km binnen 1%)
+ * 3. uitschieters per land: buiten Q1 − 1,5·IQR … Q3 + 1,5·IQR (pas vanaf 5 advertenties)
+ * Uitgesloten advertenties blijven zichtbaar in de lijst, met de reden.
+ */
+export function cleanPeers(listings: Listing[]): { kept: Listing[]; reasons: Map<string, string>; excluded: Excluded } {
+  const reasons = new Map<string, string>();
+  const excluded: Excluded = { noise: 0, duplicates: 0, outliers: 0 };
+  const within1 = (a: number | null | undefined, b: number | null | undefined) => a != null && b != null && Math.abs(a - b) <= Math.max(1, Math.max(a, b) * 0.01);
+
+  const kept: Listing[] = [];
+  for (const l of listings) {
+    if (l.noise) {
+      reasons.set(l.id, `niet meegeteld: ${l.noise}`);
+      excluded.noise++;
+      continue;
+    }
+    const dup = kept.find((k) => k.platform !== l.platform && k.country === l.country && k.year === l.year && within1(k.price, l.price) && within1(k.mileage, l.mileage));
+    if (dup) {
+      reasons.set(l.id, `niet meegeteld: dubbel (staat ook op ${dup.platform})`);
+      excluded.duplicates++;
+      continue;
+    }
+    kept.push(l);
+  }
+
+  const result: Listing[] = [];
+  for (const country of ["NL", "DE"] as const) {
+    const group = kept.filter((l) => l.country === country);
+    if (group.length < 5) {
+      result.push(...group);
+      continue;
+    }
+    const sorted = group.map((l) => l.price).sort((x, y) => x - y);
+    const q1 = quantile(sorted, 0.25), q3 = quantile(sorted, 0.75), iqr = q3 - q1;
+    for (const l of group) {
+      if (l.price < q1 - 1.5 * iqr || l.price > q3 + 1.5 * iqr) {
+        reasons.set(l.id, `niet meegeteld: prijsuitschieter (${l.price < q1 ? "veel lager" : "veel hoger"} dan de rest)`);
+        excluded.outliers++;
+      } else result.push(l);
+    }
+  }
+  return { kept: result, reasons, excluded };
+}
+
 export interface MarketData {
   listings: GradedListing[];
   filters: ListingFilters;
@@ -80,6 +133,7 @@ export interface MarketData {
   reference: (MarketRef & { source: "NL" | "DE" }) | null;
   /** Transmissie waarbinnen is vergeleken; null = alle advertenties */
   comparedTransmission: TransmissionGroup | null;
+  excluded: Excluded;
   importExtras: number;
   errors: Record<string, string>;
   fetchedAt: string;
@@ -103,16 +157,27 @@ export async function loadMarket(
   } catch (e) {
     return {
       listings: [], filters, nl: null, de: null, reference: null, comparedTransmission: null, importExtras,
+      excluded: { noise: 0, duplicates: 0, outliers: 0 },
       errors: {}, fetchedAt: new Date().toISOString(), cached: false, failed: e instanceof Error ? e.message : "Onbekende fout",
     };
   }
 
+  return { ...analyzeMarket(bundle, raw.listings, ref, importExtras), filters, errors: raw.errors, fetchedAt: raw.fetchedAt, cached: raw.cached };
+}
+
+/** Rekendeel van de marktvergelijking (zonder netwerk): opschonen, bandbreedtes, referentie en cijfers per advertentie. */
+export function analyzeMarket(
+  bundle: RdwBundle,
+  listings: Listing[],
+  ref: { price?: number; km?: number; transmission?: TransmissionGroup },
+  importExtras: number,
+): Pick<MarketData, "listings" | "nl" | "de" | "reference" | "comparedTransmission" | "excluded" | "importExtras"> {
   // Bij filter "alle" maar een bekende eigen transmissie: alleen auto's met dezelfde transmissie vergelijken (als er genoeg zijn)
-  const same = ref.transmission ? raw.listings.filter((l) => l.transmissionGroup === ref.transmission) : [];
+  const same = ref.transmission ? listings.filter((l) => l.transmissionGroup === ref.transmission) : [];
   const useSame = same.length >= 3;
-  const peers = useSame ? same : raw.listings;
   const comparedTransmission = useSame ? ref.transmission! : null;
   const what = comparedTransmission ? TR_PLURAL[comparedTransmission] : "auto's";
+  const { kept: peers, reasons, excluded } = cleanPeers(useSame ? same : listings);
 
   const nlPeers = peers.filter((l) => l.country === "NL");
   const dePeers = peers.filter((l) => l.country === "DE");
@@ -125,9 +190,9 @@ export async function loadMarket(
       ? { ...deEff, label: `${deEff.count} vergelijkbare ${what} in Duitsland (incl. importkosten)`, source: "DE" as const }
       : null;
 
-  return {
-    listings: gradeListings(bundle, raw.listings, importExtras, reference, ref),
-    filters, nl, de, reference, comparedTransmission, importExtras,
-    errors: raw.errors, fetchedAt: raw.fetchedAt, cached: raw.cached,
-  };
+  const graded = gradeListings(bundle, listings, importExtras, reference, ref).map((g) => {
+    const why = reasons.get(g.id);
+    return why ? { ...g, excluded: why } : g;
+  });
+  return { listings: graded, nl, de, reference, comparedTransmission, excluded, importExtras };
 }

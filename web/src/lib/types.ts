@@ -116,6 +116,8 @@ export interface Listing {
   transmissionGroup?: TransmissionGroup | null;
   power: string | null;
   powerKw?: number | null;
+  /** Reden waarom de advertentie geen eerlijke marktprijs is (schade, export, ...); null = normaal */
+  noise?: string | null;
   location: string | null;
   url: string;
   image?: string | null;
@@ -129,6 +131,8 @@ export interface GradedListing extends Listing {
   effectivePrice: number; // NL: vraagprijs; DE: vraagprijs + importkosten
   gradeReasons: string[];
   flags: string[];
+  /** Niet meegeteld in mediaan, bandbreedte en eerlijke prijs, met reden */
+  excluded?: string;
 }
 
 /** Vraagprijzen van vergelijkbare advertenties: mediaan en de middelste 50% (P25–P75). */

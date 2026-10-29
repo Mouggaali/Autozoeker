@@ -53,6 +53,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
   const band = tab === "NL" ? market?.nl ?? null : market?.de ?? null;
   const list = (market?.listings ?? []).filter((l) => l.country === tab);
   const lk = links.filter((l) => l.country === tab);
+  const excludedTotal = market ? market.excluded.noise + market.excluded.duplicates + market.excluded.outliers : 0;
   const failedSources = market ? Object.entries(market.errors).filter(([k]) => (tab === "NL" ? k !== "autoscout24_de" : k === "autoscout24_de")) : [];
 
   // Eigen invoer blijft behouden bij het toepassen of wissen van filters
@@ -92,6 +93,16 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
               <li>Brandstof: <b>{f?.fuel ?? "alle"}</b>{f?.body ? <> · Carrosserie: <b>{f.body}</b></> : null}{f?.kmFrom || f?.kmTo ? <> · Km: <b>{f?.kmFrom ?? 0} – {f?.kmTo ?? "…"}</b></> : null}</li>
             </ul>
             {market.reference && <p className="mt-2 text-xs text-muted">Cijfer gebruikt: mediaan van {market.reference.label}.</p>}
+            {excludedTotal > 0 && (
+              <p className="mt-1 text-xs text-muted">
+                {excludedTotal} advertentie{excludedTotal === 1 ? "" : "s"} niet meegeteld:{" "}
+                {[
+                  market.excluded.noise && `${market.excluded.noise} schade/export/defect`,
+                  market.excluded.duplicates && `${market.excluded.duplicates} dubbel`,
+                  market.excluded.outliers && `${market.excluded.outliers} prijsuitschieter${market.excluded.outliers === 1 ? "" : "s"}`,
+                ].filter(Boolean).join(", ")}.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -218,6 +229,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
                 {!l.sameAsReport && (
                   <a href={`/auto/${kenteken}?prijs=${l.price}${l.mileage ? `&km=${l.mileage}` : ""}${l.transmissionGroup ? `&transmissie=${l.transmissionGroup}` : ""}`} className="mt-1 inline-block text-xs text-brand hover:underline">Bekijk rapport met deze prijs en km →</a>
                 )}
+                {l.excluded && <div className="mt-1 inline-block rounded bg-line px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-muted">{l.excluded}</div>}
                 {l.flags.map((fl) => <div key={fl} className="mt-1 inline-block rounded bg-warn-soft px-1.5 py-0.5 text-xs text-warn">⚠ {fl}</div>)}
               </div>
             </li>

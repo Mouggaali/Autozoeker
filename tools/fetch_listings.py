@@ -117,6 +117,34 @@ def body_group(name: str | None) -> str | None:
     return "overig"
 
 
+# Advertenties die geen eerlijke marktprijs weergeven. Ontkenningen ("schadevrij", "geen schade") worden eerst
+# weggehaald, zodat een gewone advertentie die dat juist benadrukt niet als ruis telt.
+NOISE_NEGATIONS = re.compile(
+    r"schade\s*vrij\w*|(?:geen|zonder|nooit)\s+(?:\w+\s+)?schade\w*|geen\s+export|niet\s+voor\s+export|"
+    r"geen\s+opknapper|geen\s+(?:motor|bak)\w*\s*(?:schade|defect|problemen)",
+    re.I,
+)
+NOISE_PATTERNS = [
+    ("schade", r"\b\w*schade\w*|\bschadeauto"),
+    ("export", r"\bexport\w*|\bhandelsprijs|\bmeeneemprijs|\bhandelaren\b"),
+    ("opknapper", r"\bopknapper|\bklusauto|\bvoor\s+de\s+liefhebber\s+met"),
+    ("defect", r"\b(?:motor|bak|versnellingsbak|koppeling|turbo|distributie)\w*\s*(?:defect|kapot|stuk)|\bdefect\b|\bstart\s+niet|\brijdt\s+niet"),
+    ("onderdelen", r"\bvoor\s+(?:de\s+)?onderdelen|\bsloop\w*"),
+    ("lease-overname", r"\blease\s*-?\s*overname|\bovername\s+lease|\bprivate\s*lease"),
+    ("zonder APK", r"\bzonder\s+apk|\bgeen\s+apk|\bapk[\s-]*loos|\bapk\s+verlopen"),
+]
+NOISE_RX = [(reason, re.compile(rx, re.I)) for reason, rx in NOISE_PATTERNS]
+
+
+def noise_reason(*texts: str | None) -> str | None:
+    """Reden waarom een advertentie geen eerlijke marktprijs is (schade, export, ...), of None."""
+    t = NOISE_NEGATIONS.sub(" ", " ".join(x for x in texts if x))
+    for reason, rx in NOISE_RX:
+        if rx.search(t):
+            return reason
+    return None
+
+
 def slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
@@ -202,6 +230,7 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
                 "location": l.location.city if getattr(l.location, "city", None) else None,
                 "url": l.link,
                 "image": (l.first_image.medium if l.first_image else None),
+                "noise": noise_reason(l.title, l.description),
             }
         )
     return out
@@ -304,6 +333,7 @@ def _parse_as24(html: str, country: str, host: str, detail: str, make: str, mode
                 "location": location,
                 "url": f"https://{host}{paths.get(guid, f'/{detail}/{guid}')}",
                 "image": (img.get("src") if img and str(img.get("src", "")).startswith("http") else None),
+                "noise": noise_reason(h2.get_text(" ", strip=True) if h2 else None),
             }
         )
     return out
