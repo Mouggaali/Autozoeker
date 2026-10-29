@@ -7,6 +7,7 @@ import { estimateImport } from "./engines/valuation";
 import { type MarketData, type Params, loadMarket, parseFilters } from "./market";
 import { searchLinks } from "./providers/market";
 import { fetchRdw } from "./rdw";
+import { matchIssues } from "./knownIssues";
 import { buildSpecs, buildTimeline } from "./specs";
 import { effectiveTransmission, parseTransmission } from "./transmission";
 import type { RdwBundle, SourceRef, UserInputs } from "./types";
@@ -59,6 +60,7 @@ export function buildReport(bundle: RdwBundle, input: UserInputs, market: Market
     market,
     marketValue,
     fair,
+    issues: matchIssues(v, input.transmission),
     bpm,
     importCost,
     ownInputs,

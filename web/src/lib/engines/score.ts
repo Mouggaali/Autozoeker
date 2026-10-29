@@ -1,5 +1,6 @@
 import type { PriceBand, RdwBundle, ScoreComponent, ScoreResult, UserInputs } from "../types";
 import { type FairPriceModel, fairPrice, kmEffect } from "./fairPrice";
+import { matchIssues } from "../knownIssues";
 import type { OwnershipResult } from "./ownership";
 
 const clamp = (n: number, lo = 1, hi = 10) => Math.max(lo, Math.min(hi, n));
@@ -99,7 +100,17 @@ export function calcScore(
       reasons.push("Handgeschakeld: koppeling is een slijtagedeel; vraag wanneer die is vervangen.");
       checks.push("Controleer de koppeling (aangrijppunt, slippen bij optrekken) en vraag of die al is vervangen.");
     } else if (!transmission) reasons.push("Transmissie niet opgegeven; versnellingsbakrisico niet beoordeeld.");
-    reasons.push("Merk-/modelspecifieke betrouwbaarheidsdata is niet gekoppeld; score is algemeen.");
+    // Bekende zwakke plekken van deze motor/versnellingsbak (geen vastgesteld defect aan deze auto)
+    const issues = matchIssues(v, transmission);
+    if (issues.length) {
+      const penalty = Math.min(1.5, issues.reduce((n, i) => n + (i.risk === "high" ? 0.7 : 0.3), 0));
+      s -= penalty;
+      for (const i of issues) {
+        reasons.push(`Bekend aandachtspunt ${i.title}: ${i.problem.split(".")[0].toLowerCase()}.`);
+        risks.push({ level: i.risk === "high" ? "medium" : "low", text: `${i.title}: ${i.problem.split(".")[0]}.${i.cost ? ` Reparatie indicatief € ${i.cost[0].toLocaleString("nl-NL")}–${i.cost[1].toLocaleString("nl-NL")}.` : ""}` });
+        checks.push(i.check);
+      }
+    } else reasons.push("Geen bekende motorspecifieke aandachtspunten in onze lijst (de lijst is beperkt).");
     comps.push({ id: "reliability", label: "Betrouwbaarheid & mechanische risico's", weight: 0.2, score: clamp(s), reasons });
   }
 

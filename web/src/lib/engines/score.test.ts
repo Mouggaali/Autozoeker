@@ -51,3 +51,18 @@ describe("calcScore – marktdeel", () => {
     }
   });
 });
+
+describe("calcScore – bekende aandachtspunten", () => {
+  it("verlaagt de betrouwbaarheid en voegt een controlepunt toe voor een PureTech", () => {
+    const r = calcScore(bundles.peugeot308, null, null, {});
+    const rel = r.components.find((c) => c.id === "reliability")!;
+    expect(rel.reasons.some((x) => x.includes("PureTech"))).toBe(true);
+    expect(r.checks.some((x) => x.includes("distributieriem"))).toBe(true);
+    expect(r.risks.some((x) => x.text.includes("PureTech"))).toBe(true);
+  });
+
+  it("geen aandachtspunt voor de i3", () => {
+    const r = calcScore(bundles.i3, null, null, {});
+    expect(r.components.find((c) => c.id === "reliability")!.reasons.some((x) => x.includes("Geen bekende"))).toBe(true);
+  });
+});

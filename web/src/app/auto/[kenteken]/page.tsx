@@ -100,6 +100,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
             <span className="rounded bg-line px-2 py-1 text-muted">{loaded.cached ? "uit cache" : "zojuist opgehaald"}</span>
             {v.apkVervaldatum && <span className={`rounded px-2 py-1 ${new Date(v.apkVervaldatum) < new Date() ? "bg-bad-soft text-bad" : "bg-brand-soft text-brand"}`}>APK t/m {fmt(v.apkVervaldatum)}</span>}
             {bundle.odometer.verdict !== "Onbekend" && <span className={`rounded px-2 py-1 ${bundle.odometer.verdict === "Logisch" ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>Teller {bundle.odometer.verdict.toLowerCase()}</span>}
+            {r.issues.length > 0 && <a href="#aandachtspunten" className="rounded bg-warn-soft px-2 py-1 text-warn hover:underline">{r.issues.length} bekend{r.issues.length === 1 ? "" : "e"} aandachtspunt{r.issues.length === 1 ? "" : "en"}</a>}
           </div>
           <details className="mt-5 text-sm"><summary className="cursor-pointer font-medium text-brand">Vraagprijs, kilometerstand of transmissie aanpassen</summary>
             <form method="get" className="mt-3 flex flex-wrap gap-2">
@@ -152,6 +153,24 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
           )}
         </Card>
       </div>
+
+      {r.issues.length > 0 && (
+        <Card id="aandachtspunten" eyebrow="Motor & aandrijving" title="Bekende aandachtspunten" subtitle="Algemeen bekende zwakke plekken van deze motor of versnellingsbak. Geen vastgesteld defect aan deze auto, wel iets om te controleren.">
+          <ul className="grid gap-4 md:grid-cols-2">
+            {r.issues.map((i) => (
+              <li key={i.id} className="rounded-lg border border-line bg-bg/40 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="font-semibold">{i.title}</h3>
+                  <span className={`whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${i.risk === "high" ? "bg-warn-soft text-warn" : "bg-line text-muted"}`}>{i.risk === "high" ? "veelvoorkomend" : "let op"}</span>
+                </div>
+                <p className="mt-2 text-sm">{i.problem}</p>
+                <p className="mt-2 text-sm"><span className="eyebrow mr-1">Controleer</span>{i.check}</p>
+                {i.cost && <p className="num mt-2 text-xs text-muted">Reparatie indicatief {eur(i.cost[0])} – {eur(i.cost[1])}</p>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/* Score */}
       <Card title="Uitleg van de score" subtitle="Onderdelen zonder data tellen niet mee in het cijfer; ze verlagen alleen de zekerheid.">
