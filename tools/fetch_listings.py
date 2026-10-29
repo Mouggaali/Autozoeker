@@ -24,6 +24,7 @@ import json
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from html import unescape
 
 import truststore
@@ -354,15 +355,18 @@ def main() -> None:
         "autoscout24_nl": lambda: autoscout24("NL", make, model, filters),
         "autoscout24_de": lambda: autoscout24("DE", make, model, filters),
     }
-    for name in sources:
+    # De bronnen zijn onafhankelijke sites: tegelijk ophalen (scheelt enkele seconden per rapport).
+    # Binnen één bron blijven verzoeken sequentieel, zodat het volume per site laag blijft.
+    with ThreadPoolExecutor(max_workers=len(sources) or 1) as pool:
+        futures = {name: pool.submit(jobs[name]) for name in sources}
+    for name in sources:  # vaste volgorde in de uitvoer
         try:
-            rows = jobs[name]()
+            rows = futures[name].result()
             if mid_year:
                 rows.sort(key=lambda x: abs((x["year"] or mid_year) - mid_year))
             listings.extend(rows[:limit])
         except Exception as e:  # noqa: BLE001 - per bron falen is toegestaan
             errors[name] = f"{type(e).__name__}: {e}"[:300]
-        time.sleep(0.5)
     json.dump({"listings": listings, "errors": errors}, sys.stdout, ensure_ascii=False)
 
 

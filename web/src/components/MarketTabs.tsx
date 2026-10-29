@@ -93,7 +93,13 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
               <li>Transmissie: <b>{f?.transmission ? TR_LABEL[f.transmission] : market.comparedTransmission ? `${TR_LABEL[market.comparedTransmission]} (alleen in de mediaan)` : "alle"}</b></li>
               <li>Brandstof: <b>{f?.fuel ?? "alle"}</b>{f?.body ? <> · Carrosserie: <b>{f.body}</b></> : null}{f?.kmFrom || f?.kmTo ? <> · Km: <b>{f?.kmFrom ?? 0} – {f?.kmTo ?? "…"}</b></> : null}</li>
             </ul>
-            {market.reference && <p className="mt-2 text-xs text-muted">Cijfer gebruikt: mediaan van {market.reference.label}.</p>}
+            {market.reference && (
+              <p className="mt-2 text-xs text-muted">
+                {market.reference.model
+                  ? <>Cijfer gebruikt: eerlijke prijs per bouwjaar en km, berekend uit {market.reference.label} (R² {market.reference.model.r2.toFixed(2).replace(".", ",")}).</>
+                  : <>Cijfer gebruikt: mediaan van {market.reference.label}{mileage ? ", gecorrigeerd voor km" : ""}. Te weinig of te gespreide data voor een eerlijke-prijsmodel.</>}
+              </p>
+            )}
             {excludedTotal > 0 && (
               <p className="mt-1 text-xs text-muted">
                 {excludedTotal} advertentie{excludedTotal === 1 ? "" : "s"} niet meegeteld:{" "}

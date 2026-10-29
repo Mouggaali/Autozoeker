@@ -1,48 +1,21 @@
-import { spawn } from "node:child_process";
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { cacheGet, cacheSet } from "../cache";
 import type { FuelGroup, Listing, ListingFilters, TransmissionGroup, Vehicle } from "../types";
+import { runPythonTool } from "./python";
 
 /**
  * Haalt live advertenties op via tools/fetch_listings.py:
  *  - Marktplaats via de bibliotheek `marktplaats` (jensjeflensje/marktplaats-py)
  *  - AutoScout24 NL/DE via de HTML-techniek uit lorenzoelia/autoscout24_scraping
  * Dit zijn niet-officiële bronnen; resultaten worden 30 minuten gecachet om het volume laag te houden.
+ * Zie workflows/fetch_listings.md.
  */
-const ROOT = path.resolve(process.cwd(), "..");
-const TOOL = path.join(ROOT, "tools", "fetch_listings.py");
-const VENV_PY = path.join(ROOT, "tools", ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
-const CACHE_DIR = path.join(process.cwd(), ".data", "listings");
-const TTL_MS = 30 * 60 * 1000;
-const TIMEOUT_MS = 45_000;
+const TTL_S = 30 * 60;
 
 export interface ListingsResult {
   listings: Listing[];
   errors: Record<string, string>;
   fetchedAt: string;
   cached: boolean;
-}
-
-async function pythonBin(): Promise<string> {
-  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
-  try { await fs.access(VENV_PY); return VENV_PY; } catch { return process.platform === "win32" ? "python" : "python3"; }
-}
-
-function run(input: unknown): Promise<{ listings: Omit<Listing, "provenance">[]; errors: Record<string, string> }> {
-  return new Promise(async (resolve, reject) => {
-    const child = spawn(await pythonBin(), [TOOL], { env: { ...process.env, PYTHONIOENCODING: "utf-8" } });
-    let out = "", err = "";
-    const timer = setTimeout(() => { child.kill(); reject(new Error("Time-out bij ophalen advertenties")); }, TIMEOUT_MS);
-    child.stdout.on("data", (d) => (out += d));
-    child.stderr.on("data", (d) => (err += d));
-    child.on("error", (e) => { clearTimeout(timer); reject(e); });
-    child.on("close", (code) => {
-      clearTimeout(timer);
-      if (code !== 0) return reject(new Error(err.trim().split("\n").pop() || `exit ${code}`));
-      try { resolve(JSON.parse(out)); } catch { reject(new Error("Ongeldige uitvoer van listings-tool")); }
-    });
-    child.stdin.end(JSON.stringify(input));
-  });
 }
 
 /**
@@ -72,18 +45,25 @@ export function defaultFilters(v: Vehicle, transmission?: TransmissionGroup): Li
   };
 }
 
+// Lopende zoekopdrachten: de rapportpagina en /api/summary vragen vaak tegelijk hetzelfde op
+const inFlight = new Map<string, Promise<ListingsResult>>();
+
 export async function fetchListings(v: Vehicle, f: ListingFilters): Promise<ListingsResult> {
   const key = [v.merk, v.model, f.yearFrom, f.yearTo, f.kmFrom, f.kmTo, f.body, f.fuel, f.transmission, f.pkFrom, f.pkTo, f.priceFrom, f.priceTo].join("-").toLowerCase().replace(/[^a-z0-9]+/g, "_");
-  const file = path.join(CACHE_DIR, `${key}.json`);
-  try {
-    const c = JSON.parse(await fs.readFile(file, "utf8")) as ListingsResult;
-    if (Date.now() - new Date(c.fetchedAt).getTime() < TTL_MS) return { ...c, cached: true };
-  } catch {}
+  const hit = await cacheGet<ListingsResult>(`listings:${key}`);
+  if (hit) return { ...hit, cached: true };
+  const running = inFlight.get(key);
+  if (running) return running;
+  const p = scrape(v, f, key).finally(() => inFlight.delete(key));
+  inFlight.set(key, p);
+  return p;
+}
 
+async function scrape(v: Vehicle, f: ListingFilters, key: string): Promise<ListingsResult> {
   // RDW-handelsbenaming is vaak "I3" of "GOLF"; de eerste woorden volstaan voor het zoeken
   const words = v.model.split(/\s+/);
   const model = (words[1] && /^(\d{1,2}|klasse|class|serie|series)$/i.test(words[1]) ? words.slice(0, 2) : words.slice(0, 1)).join(" ");
-  const raw = await run({ make: v.merk.split(" ")[0], model, limit: 12, year_from: f.yearFrom, year_to: f.yearTo, km_from: f.kmFrom, km_to: f.kmTo, body: f.body, fuel: f.fuel, transmission: f.transmission,
+  const raw = await runPythonTool<{ listings: Omit<Listing, "provenance">[]; errors: Record<string, string> }>("fetch_listings.py", { make: v.merk.split(" ")[0], model, limit: 12, year_from: f.yearFrom, year_to: f.yearTo, km_from: f.kmFrom, km_to: f.kmTo, body: f.body, fuel: f.fuel, transmission: f.transmission,
     power_from: f.pkFrom ? Math.floor(f.pkFrom / KW_TO_PK) : null, power_to: f.pkTo ? Math.ceil(f.pkTo / KW_TO_PK) : null,
     price_from: f.priceFrom, price_to: f.priceTo });
   const result: ListingsResult = {
@@ -96,8 +76,6 @@ export async function fetchListings(v: Vehicle, f: ListingFilters): Promise<List
     cached: false,
   };
   // Alleen cachen als er resultaat is, zodat tijdelijke fouten niet 30 minuten blijven hangen
-  if (result.listings.length) {
-    try { await fs.mkdir(CACHE_DIR, { recursive: true }); await fs.writeFile(file, JSON.stringify(result)); } catch {}
-  }
+  if (result.listings.length) await cacheSet(`listings:${key}`, result, TTL_S);
   return result;
 }

@@ -1,20 +1,18 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Calculator from "@/components/Calculator";
-import MarketTabs from "@/components/MarketTabs";
+import { Suspense } from "react";
 import SearchForm from "@/components/SearchForm";
 import SummaryBox from "@/components/SummaryBox";
-import { Bar, Card, ProvBadge, ScoreGauge, eur, scoreColor, scoreVerdict } from "@/components/ui";
+import { Card, ProvBadge, eur } from "@/components/ui";
 import { BPM_YEAR, depreciationPct } from "@/lib/engines/bpm";
-import { ownershipFacts } from "@/lib/engines/ownership";
 import { fmtDuration, registrationHistory } from "@/lib/engines/registration";
+import { loadMarket, parseFilters } from "@/lib/market";
 import { formatPlate, parseVehicleKey } from "@/lib/plate";
-import { loadReport } from "@/lib/report";
+import { buildReport, loadBundle, parseInputs } from "@/lib/report";
 import { TRANSMISSION_LABEL } from "@/lib/transmission";
+import { CardSkeleton, Costs, ListSkeleton, Market, Risks, ScoreExplanation, Verdict, VerdictSkeleton } from "./sections";
 
 const toneCls = { neutral: "bg-brand", good: "bg-good", warn: "bg-warn", bad: "bg-bad" } as const;
-const riskCls = { high: "bg-bad-soft text-bad", medium: "bg-warn-soft text-warn", low: "bg-brand-soft text-brand" } as const;
-const riskLabel = { high: "Hoog risico", medium: "Let op", low: "Info" } as const;
 const fmt = (d: string) => new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
 
 async function VinReport({ vin }: { vin: string }) {
@@ -51,7 +49,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
   const get = (name: string) => { const x = sp[name]; return (Array.isArray(x) ? x[0] : x) ?? null; };
 
   let loaded;
-  try { loaded = await loadReport(key.value, get); } catch {
+  try { loaded = await loadBundle(key.value); } catch {
     return (
       <div className="mx-auto max-w-xl px-4 py-16"><Card title="RDW tijdelijk niet bereikbaar"><p className="text-sm">De RDW Open Data gaf een fout terug. Probeer het over een moment opnieuw.</p><div className="mt-4"><SearchForm compact /></div></Card></div>
     );
@@ -62,10 +60,14 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
     );
   }
 
-  const r = loaded.report;
-  const { bundle, score } = r;
+  // Eerst alles uit het RDW-register (direct zichtbaar); het cijfer en de marktvergelijking streamen erin
+  const bundle = loaded.bundle;
   const v = bundle.vehicle;
-  const { askingPrice: price, mileage: km, transmission } = r.input;
+  const input = parseInputs(get, v);
+  const r = buildReport(bundle, input, null);
+  const full = loadMarket(bundle, parseFilters(get, v, input.transmission), { price: input.askingPrice, km: input.mileage, transmission: input.transmission })
+    .then((market) => buildReport(bundle, input, market));
+  const { askingPrice: price, mileage: km, transmission } = input;
   // Samenvatting met dezelfde invoer en vergelijkingsfilters als dit rapport
   const summaryQuery = new URLSearchParams({ ...Object.fromEntries(Object.keys(sp).map((k) => [k, get(k) ?? ""])), kenteken: v.kenteken }).toString();
   const reg = registrationHistory(v);
@@ -118,40 +120,13 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
           </details>
         </div>
         <div className="flex flex-col justify-between gap-5 border-t border-line bg-bg/60 p-5 sm:p-7 lg:border-t-0 lg:border-l">
-          <div>
-            <div className="eyebrow mb-2">Eindoordeel</div>
-            <ScoreGauge score={score.overall} />
-            <div className="mt-3 font-display text-xl font-bold" style={{ color: scoreColor(score.overall) }}>{scoreVerdict(score.overall)}</div>
-            <div className="text-xs text-muted">Zekerheid: {score.confidenceLabel.toLowerCase()} ({Math.round(score.confidence * 100)}% van de weging onderbouwd)</div>
-          </div>
-          {r.market?.reference && (
-            <a href="#markt" className="block rounded-lg border border-line bg-card p-3 text-sm hover:border-brand">
-              {r.fair ? (
-                <>
-                  <div className="eyebrow">Eerlijke prijs voor {km!.toLocaleString("nl-NL")} km</div>
-                  <div className="num mt-1 text-2xl font-semibold">{eur(r.fair.mid)}</div>
-                  <div className="num text-xs text-muted">{eur(r.fair.low)} – {eur(r.fair.high)}{r.fair.source === "DE" ? " · DE incl. import" : ""}</div>
-                  <div className="num mt-2 border-t border-line pt-2 text-xs text-muted">Mediaan {eur(r.market.reference.median)} · {r.market.reference.count} advertenties →</div>
-                </>
-              ) : (
-                <>
-                  <div className="eyebrow">Mediaan vergelijkbare auto&apos;s</div>
-                  <div className="num mt-1 text-2xl font-semibold">{eur(r.market.reference.median)}</div>
-                  <div className="num text-xs text-muted">{eur(r.market.reference.low)} – {eur(r.market.reference.high)} · {r.market.reference.count} advertenties →</div>
-                </>
-              )}
-            </a>
-          )}
+          <Suspense fallback={<VerdictSkeleton />}><Verdict report={full} /></Suspense>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Samenvatting" className="lg:col-span-2"><SummaryBox query={summaryQuery} /></Card>
-        <Card title="Belangrijkste risico's">
-          {score.risks.length === 0 ? <p className="text-sm text-muted">Geen rode vlaggen gevonden in de beschikbare data. Dat is geen garantie: schade en eigenaarshistorie zijn niet openbaar.</p> : (
-            <ul className="space-y-2">{score.risks.map((x) => <li key={x.text} className={`rounded-lg p-2 text-sm ${riskCls[x.level]}`}><b>{riskLabel[x.level]}:</b> {x.text}</li>)}</ul>
-          )}
-        </Card>
+        <Card title="Belangrijkste risico's"><Suspense fallback={<ListSkeleton />}><Risks report={full} /></Suspense></Card>
       </div>
 
       {r.issues.length > 0 && (
@@ -173,19 +148,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
       )}
 
       {/* Score */}
-      <Card title="Uitleg van de score" subtitle="Onderdelen zonder data tellen niet mee in het cijfer; ze verlagen alleen de zekerheid.">
-        <div className="grid gap-4 md:grid-cols-2">
-          {score.components.map((c) => (
-            <div key={c.id} className="rounded-lg border border-line bg-bg/40 p-4">
-              <div className="flex items-baseline justify-between gap-2"><span className="font-semibold">{c.label}</span><span className="eyebrow whitespace-nowrap">weging {Math.round(c.weight * 100)}%</span></div>
-              {c.score != null ? (<div className="mt-3 flex items-center gap-3"><div className="flex-1"><Bar value={c.score} /></div><b className="num text-lg" style={{ color: scoreColor(c.score) }}>{c.score.toFixed(1)}</b></div>) : <div className="mt-3"><ProvBadge p="unavailable" /> <span className="text-xs text-muted">niet beoordeeld</span></div>}
-              <ul className="mt-2 list-disc pl-5 text-xs text-muted">{c.reasons.map((x) => <li key={x}>{x}</li>)}</ul>
-            </div>
-          ))}
-        </div>
-        <h3 className="mt-5 font-semibold">Controleer voor aankoop</h3>
-        <ul className="mt-1 list-disc pl-5 text-sm">{score.checks.map((x) => <li key={x}>{x}</li>)}</ul>
-      </Card>
+      <Suspense fallback={<CardSkeleton title="Uitleg van de score" />}><ScoreExplanation report={full} /></Suspense>
 
       {/* Specificaties */}
       <Card title="Technische specificaties" subtitle="Klik een categorie open">
@@ -289,7 +252,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         )}
       </Card>
 
-      <MarketTabs kenteken={v.kenteken} market={r.market} importCost={r.importCost} links={r.links} askingPrice={price} mileage={km} transmission={transmission} fair={r.fair} />
+      <Suspense fallback={<CardSkeleton title="Marktvergelijking" note="Advertenties ophalen bij Marktplaats en AutoScout24…" />}><Market report={full} /></Suspense>
 
       {/* BPM */}
       <Card title="BPM" subtitle="Aanschafbelasting: wat er werkelijk is betaald, volgens het RDW-register">
@@ -318,8 +281,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         <ul className="mt-4 list-disc space-y-1 pl-5 text-xs text-muted">{r.bpm.assumptions.map((a) => <li key={a}>{a}</li>)}</ul>
       </Card>
 
-      {r.marketValue == null && <p className="rounded-lg bg-warn-soft p-3 text-sm text-warn">Er zijn te weinig vergelijkbare advertenties voor een marktwaarde. Voor verzekering en waardevermindering is een generieke referentiewaarde van € {r.ownInputs.currentValue.toLocaleString("nl-NL")} gebruikt, gebaseerd op leeftijd. Pas de kosten daarom niet te letterlijk toe.</p>}
-      <Calculator facts={ownershipFacts(v)} defaults={r.ownInputs} />
+      <Suspense fallback={<CardSkeleton title="Maandelijkse kosten" />}><Costs report={full} /></Suspense>
 
       <Card title="Bronnen & beperkingen">
         <ul className="space-y-1 text-sm">{r.sources.map((s) => <li key={s.id}>{s.url ? <a className="text-brand underline" href={s.url} target="_blank" rel="noopener noreferrer">{s.name}</a> : s.name}{s.note ? <span className="text-muted"> – {s.note}</span> : null}</li>)}</ul>

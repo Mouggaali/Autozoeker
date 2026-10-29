@@ -1,5 +1,4 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
+import { cacheGet, cacheSet } from "./cache";
 import { calcBpm } from "./engines/bpm";
 import { calcOwnership, defaultInputs, ownershipFacts } from "./engines/ownership";
 import { calcScore, marketReference } from "./engines/score";
@@ -12,25 +11,15 @@ import { buildSpecs, buildTimeline } from "./specs";
 import { effectiveTransmission, parseTransmission } from "./transmission";
 import type { RdwBundle, SourceRef, UserInputs } from "./types";
 
-/**
- * Eenvoudige bestandsopslag voor RDW-snapshots (.data/reports). Vervang door Supabase/Postgres
- * door RdwStore te implementeren; zie docs/DATA_SOURCES.md.
- */
-const DIR = path.join(process.cwd(), ".data", "reports");
-const TTL_MS = 12 * 60 * 60 * 1000;
+/** RDW-snapshots 12 uur cachen (Upstash als ingesteld, anders bestand; zie lib/cache.ts). */
+const TTL_S = 12 * 60 * 60;
 
 export async function loadBundle(kenteken: string): Promise<{ bundle: RdwBundle; cached: boolean } | null> {
-  const file = path.join(DIR, `${kenteken}.json`);
-  try {
-    const cached = JSON.parse(await fs.readFile(file, "utf8")) as RdwBundle;
-    if (Date.now() - new Date(cached.fetchedAt).getTime() < TTL_MS) return { bundle: cached, cached: true };
-  } catch {}
+  const hit = await cacheGet<RdwBundle>(`rdw:${kenteken}`);
+  if (hit) return { bundle: hit, cached: true };
   const bundle = await fetchRdw(kenteken);
   if (!bundle) return null;
-  try {
-    await fs.mkdir(DIR, { recursive: true });
-    await fs.writeFile(file, JSON.stringify(bundle));
-  } catch {}
+  await cacheSet(`rdw:${kenteken}`, bundle, TTL_S);
   return { bundle, cached: false };
 }
 
