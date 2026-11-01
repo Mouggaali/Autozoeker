@@ -1,63 +1,100 @@
 @import "tailwindcss";
+/* scroll-craft-engine (MIT, zie styles/LICENSE-scrollcraft.txt) in de base-laag, zodat Tailwind-utilities winnen */
+@import "../styles/scrollcraft.css" layer(base);
 
 /*
- * Ontwerprichting "keuringsrapport": warm papier, inktzwart, RDW-blauw als accent en kentekengeel
- * als signatuur. Cijfers en labels in monospace, zoals op een keuringsformulier.
+ * Ontwerprichting "keuringshal bij nacht" (scroll-glass): Apple liquid glass boven een wereld van zes lichten,
+ * één per onderdeel van het cijfer. Donker is de standaard (glas heeft licht achter zich nodig),
+ * kentekengeel is het enige accent. Goed/let op/slecht zijn datakleuren, geen accent.
  */
 :root {
-  --bg: #f3efe6;
-  --card: #fffdf8;
-  --fg: #17140f;
-  --muted: #6d6659;
-  --line: #e0d9ca;
-  --brand: #1f3fc4;
-  --brand-soft: #e6e9fb;
+  --bg: #060a12;
+  --card: rgba(222, 232, 255, 0.06);
+  --fg: #f2f5fb;
+  --muted: #a3aec2;
+  --line: rgba(222, 232, 255, 0.13);
+  --brand: #f6c90e;
+  --brand-soft: rgba(246, 201, 14, 0.12);
   --plate: #f6c90e;
   --plate-ink: #17140f;
-  --good: #1d7a45;
-  --warn: #a8660b;
-  --bad: #b93222;
-  --good-soft: #e2f2e6;
-  --warn-soft: #fbefd6;
-  --bad-soft: #fbe5e0;
-  --shadow: 0 1px 0 rgba(23, 20, 15, 0.04), 0 8px 24px -12px rgba(23, 20, 15, 0.12);
+  --rdw: #2a5bd7;
+  --good: #4cdf9c;
+  --warn: #f5b04f;
+  --bad: #ff7a85;
+  --good-soft: rgba(76, 223, 156, 0.13);
+  --warn-soft: rgba(245, 176, 79, 0.14);
+  --bad-soft: rgba(255, 122, 133, 0.14);
+  --on-tone: #06101c;
+
+  /* scroll-craft-rollen */
+  --sc-canvas: var(--bg);
+  --sc-surface: #0e1524;
+  --sc-ink: var(--fg);
+  --sc-ink-soft: var(--muted);
+  --sc-accent: var(--brand);
+  --sc-accent-ink: #17140f;
+  --sc-font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--ff-geist), system-ui, sans-serif;
+  --sc-font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--ff-geist), system-ui, sans-serif;
+  --sc-font-mono: "SF Mono", var(--ff-geist-mono), ui-monospace, monospace;
+  --sc-shadow-color: 224 60% 3%;
+  --sc-gutter: clamp(1rem, 4vw, 3.5rem);
+
+  /* glas */
+  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035));
+  --glass-flat: rgba(16, 24, 40, 0.9);
+  --glass-rim: rgba(255, 255, 255, 0.14);
+  --glass-spec: rgba(255, 255, 255, 0.55);
+  --glass-spec-low: rgba(255, 255, 255, 0.2);
+  --glass-lip: inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  --glass-blur: blur(28px) saturate(170%);
+  --glass-shadow: 0 2px 6px hsl(var(--sc-shadow-color) / 0.25), 0 24px 52px -18px hsl(var(--sc-shadow-color) / 0.65);
+  --hover: rgba(255, 255, 255, 0.07);
+  --pressed: rgba(255, 255, 255, 0.14);
+  --well: rgba(222, 232, 255, 0.07);
+
+  /* de wereld */
+  --orb-opacity: 0.6;
+  --wall: radial-gradient(110% 70% at 50% -12%, #13213f 0%, transparent 62%),
+          radial-gradient(80% 60% at 100% 100%, #101b33 0%, transparent 60%),
+          #060a12;
+
+  --r-panel: 26px;
+  --r-inner: 16px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #12110d;
-    --card: #1b1915;
-    --fg: #f2ede3;
-    --muted: #a59d8e;
-    --line: #2f2c25;
-    --brand: #93a6ff;
-    --brand-soft: #1d2242;
-    --plate: #f6c90e;
-    --plate-ink: #17140f;
-    --good: #5fcf8d;
-    --warn: #e9b153;
-    --bad: #ff8a77;
-    --good-soft: #15291c;
-    --warn-soft: #33270f;
-    --bad-soft: #391b16;
-    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #e8ecf4; --card: rgba(255, 255, 255, 0.55); --fg: #0c1324; --muted: #4a5670; --line: rgba(20, 34, 64, 0.12);
+    --brand: #8a6400; --brand-soft: rgba(246, 201, 14, 0.22);
+    --good: #13794a; --warn: #9a5800; --bad: #b42a37;
+    --good-soft: rgba(19, 121, 74, 0.11); --warn-soft: rgba(154, 88, 0, 0.11); --bad-soft: rgba(180, 42, 55, 0.1); --on-tone: #ffffff;
+    --sc-surface: #f5f7fb; --sc-accent: #f6c90e; --sc-shadow-color: 222 40% 40%;
+    --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.4));
+    --glass-flat: rgba(250, 251, 254, 0.94); --glass-rim: rgba(255, 255, 255, 0.75);
+    --glass-spec: rgba(255, 255, 255, 1); --glass-spec-low: rgba(255, 255, 255, 0.5);
+    --glass-lip: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(20, 34, 64, 0.05);
+    --glass-shadow: 0 2px 6px hsl(var(--sc-shadow-color) / 0.1), 0 22px 48px -18px hsl(var(--sc-shadow-color) / 0.3);
+    --hover: rgba(20, 34, 64, 0.05); --pressed: rgba(20, 34, 64, 0.09); --well: rgba(20, 34, 64, 0.06);
+    --orb-opacity: 0.5;
+    --wall: radial-gradient(110% 70% at 50% -12%, #ffffff 0%, transparent 62%),
+            radial-gradient(80% 60% at 100% 100%, #dde3f2 0%, transparent 60%), #e8ecf4;
   }
 }
-:root[data-theme="dark"] {
-  --bg: #12110d;
-  --card: #1b1915;
-  --fg: #f2ede3;
-  --muted: #a59d8e;
-  --line: #2f2c25;
-  --brand: #93a6ff;
-  --brand-soft: #1d2242;
-  --good: #5fcf8d;
-  --warn: #e9b153;
-  --bad: #ff8a77;
-  --good-soft: #15291c;
-  --warn-soft: #33270f;
-  --bad-soft: #391b16;
-  --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 8px 24px -12px rgba(0, 0, 0, 0.5);
+:root[data-theme="light"] {
+  --bg: #e8ecf4; --card: rgba(255, 255, 255, 0.55); --fg: #0c1324; --muted: #4a5670; --line: rgba(20, 34, 64, 0.12);
+  --brand: #8a6400; --brand-soft: rgba(246, 201, 14, 0.22);
+  --good: #13794a; --warn: #9a5800; --bad: #b42a37;
+  --good-soft: rgba(19, 121, 74, 0.11); --warn-soft: rgba(154, 88, 0, 0.11); --bad-soft: rgba(180, 42, 55, 0.1); --on-tone: #ffffff;
+  --sc-surface: #f5f7fb; --sc-accent: #f6c90e; --sc-shadow-color: 222 40% 40%;
+  --glass-fill: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.4));
+  --glass-flat: rgba(250, 251, 254, 0.94); --glass-rim: rgba(255, 255, 255, 0.75);
+  --glass-spec: rgba(255, 255, 255, 1); --glass-spec-low: rgba(255, 255, 255, 0.5);
+  --glass-lip: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 -1px 0 rgba(20, 34, 64, 0.05);
+  --glass-shadow: 0 2px 6px hsl(var(--sc-shadow-color) / 0.1), 0 22px 48px -18px hsl(var(--sc-shadow-color) / 0.3);
+  --hover: rgba(20, 34, 64, 0.05); --pressed: rgba(20, 34, 64, 0.09); --well: rgba(20, 34, 64, 0.06);
+  --orb-opacity: 0.5;
+  --wall: radial-gradient(110% 70% at 50% -12%, #ffffff 0%, transparent 62%),
+          radial-gradient(80% 60% at 100% 100%, #dde3f2 0%, transparent 60%), #e8ecf4;
 }
 
 @theme inline {
@@ -75,68 +112,156 @@
   --color-good-soft: var(--good-soft);
   --color-warn-soft: var(--warn-soft);
   --color-bad-soft: var(--bad-soft);
-  --font-sans: var(--ff-body), system-ui, sans-serif;
-  --font-display: var(--ff-display), var(--ff-body), system-ui, sans-serif;
-  --font-mono: var(--ff-mono), ui-monospace, monospace;
+  --font-sans: var(--sc-font-text);
+  --font-display: var(--sc-font-display);
+  --font-mono: var(--sc-font-mono);
 }
 
-body {
-  background: var(--bg);
-  color: var(--fg);
-  font-family: var(--ff-body), system-ui, sans-serif;
-  /* Subtiele papierstructuur */
-  background-image: radial-gradient(color-mix(in srgb, var(--fg) 5%, transparent) 1px, transparent 1px);
-  background-size: 22px 22px;
-}
+body { background: var(--bg); color: var(--fg); }
 
 h1, h2, h3 {
-  font-family: var(--ff-display), var(--ff-body), system-ui, sans-serif;
-  letter-spacing: -0.02em;
+  font-family: var(--sc-font-display);
+  letter-spacing: -0.025em;
 }
 
-/* Labels in formulierstijl: kleine monospace kapitalen */
-.eyebrow {
-  font-family: var(--ff-mono), ui-monospace, monospace;
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--muted);
+@layer components {
+  /* Labels: kleine kapitalen, rustig */
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+  .plate {
+    background: var(--plate);
+    color: var(--plate-ink);
+    border: 2px solid var(--plate-ink);
+    border-left: 22px solid var(--rdw);
+    border-radius: 7px;
+    font-family: var(--sc-font-mono);
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  /* ---------------------------------------------------------- materiaal --
+     Vier lagen: wazige achtergrond, zachte vulling, een lip van licht aan de bovenrand en een
+     specular rand (::before met mask). Nooit glas in glas: binnenvlakken zijn .well. */
+  .glass, .surface {
+    position: relative;
+    background: var(--glass-fill);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-rim);
+    box-shadow: var(--glass-lip), var(--glass-shadow);
+    border-radius: var(--r-panel);
+  }
+  .glass::before, .surface::before {
+    content: ""; position: absolute; inset: -1px; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: linear-gradient(135deg, var(--glass-spec) 0%, transparent 30%, transparent 70%, var(--glass-spec-low) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass, .surface { background: var(--glass-flat); }
+  }
+  .well { background: var(--well); border-radius: var(--r-inner); }
+
+  /* Invoervelden: ingelaten in het glas */
+  .field-in {
+    background: var(--well);
+    border: 1px solid transparent;
+    box-shadow: inset 0 1px 2px hsl(var(--sc-shadow-color) / 0.25);
+    color: var(--fg);
+  }
+  .field-in:focus { outline: none; border-color: var(--sc-accent); }
+
+  .btn-primary {
+    background: var(--sc-accent); color: var(--sc-accent-ink); font-weight: 650; border-radius: 999px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 8px 22px -10px rgba(246, 201, 14, 0.6);
+    transition: transform 140ms var(--sc-ease-out), filter 160ms var(--sc-ease-out);
+  }
+  .btn-primary:active { transform: scale(0.97); }
+  @media (hover: hover) and (pointer: fine) { .btn-primary:hover { filter: brightness(1.06); } }
+
+  .row-hit { border-radius: var(--r-inner); transition: background-color 160ms var(--sc-ease-out); }
+  .row-hit.is-lit { background: var(--hover); box-shadow: var(--glass-lip); }
 }
 
-.num {
-  font-family: var(--ff-mono), ui-monospace, monospace;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+/* ------------------------------------------------------------ de wereld --
+   Vaste laag achter alles. World.tsx vult hem met de zes keuringslichten. */
+.world { position: fixed; inset: 0; z-index: 0; overflow: hidden; background: var(--wall); pointer-events: none; }
+.orb {
+  position: absolute; left: 0; top: 0;
+  width: var(--s); height: var(--s); margin: calc(var(--s) / -2) 0 0 calc(var(--s) / -2);
+  opacity: var(--o, var(--orb-opacity));
+  transition: transform 1100ms var(--sc-ease-out), opacity 520ms var(--sc-ease-out);
+  will-change: transform;
+}
+.orb > i {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in oklab, var(--c) 80%, transparent) 0%, color-mix(in oklab, var(--c) 34%, transparent) 34%, transparent 70%);
+  transition: background 700ms var(--sc-ease-out);
+  animation: az-float var(--d, 18s) ease-in-out infinite alternate;
+}
+@keyframes az-float {
+  from { transform: translate3d(-3%, -2%, 0) scale(1); }
+  to   { transform: translate3d(3%, 3%, 0) scale(1.08); }
+}
+.app { position: relative; z-index: 1; }
+
+/* ------------------------------------------------------------- chrome --
+   .bar is zelf geen glas (backdrop-filter maakt hem de containing block voor position: fixed). */
+.bar {
+  position: fixed; z-index: 40;
+  top: calc(10px + env(safe-area-inset-top)); left: var(--sc-gutter); right: var(--sc-gutter);
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  pointer-events: none;
+}
+.bar > * { pointer-events: auto; border-radius: 999px; }
+
+/* Keuringsrail: zes stippen, één per scoreonderdeel; rechts op desktop, onderaan op de telefoon */
+.rail {
+  position: fixed; z-index: 40; right: 14px; top: 50%; translate: 0 -50%;
+  display: flex; flex-direction: column; gap: 4px; padding: 6px; border-radius: 999px;
+}
+.rail a {
+  position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px;
+  transition: background-color 160ms var(--sc-ease-out), transform 120ms var(--sc-ease-out);
+}
+.rail a:active { transform: scale(0.94); }
+.rail a i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in oklab, var(--c) 22%, transparent); transition: transform 220ms var(--sc-ease-out), background 700ms var(--sc-ease-out); }
+.rail a[aria-current="true"] { background: var(--pressed); }
+.rail a[aria-current="true"] i { transform: scale(1.35); }
+.rail a span {
+  position: absolute; right: calc(100% + 10px); white-space: nowrap; padding: 5px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; color: var(--fg); background: var(--glass-flat); box-shadow: var(--glass-shadow);
+  opacity: 0; translate: 6px 0; pointer-events: none; transition: opacity 160ms var(--sc-ease-out), translate 160ms var(--sc-ease-out);
+}
+.rail a:focus-visible span, .rail a[aria-current="true"]:focus-visible span { opacity: 1; translate: 0 0; }
+@media (hover: hover) and (pointer: fine) {
+  .rail a:hover { background: var(--hover); }
+  .rail a:hover span { opacity: 1; translate: 0 0; }
+}
+@media (max-width: 1100px) {
+  .rail { top: auto; translate: -50% 0; right: auto; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom)); flex-direction: row; }
+  .rail a span { display: none; }
+  .has-rail { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 }
 
-.plate {
-  background: var(--plate);
-  color: var(--plate-ink);
-  border: 2px solid var(--plate-ink);
-  border-left: 22px solid #0b3fa8;
-  border-radius: 6px;
-  font-family: var(--ff-mono), ui-monospace, monospace;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
+main section[id], main [id] { scroll-margin-top: calc(80px + env(safe-area-inset-top)); }
 
-.surface {
-  background: var(--card);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow);
-}
-
-input, select, textarea {
-  accent-color: var(--brand);
-}
-:focus-visible {
-  outline: 2px solid var(--brand);
-  outline-offset: 2px;
-}
+:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: no-preference) {
-  .rise { animation: rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
-  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  .rise { animation: rise 0.6s var(--sc-ease-out) both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orb > i { animation: none; }
+  .orb { transition: opacity 220ms linear; }
 }

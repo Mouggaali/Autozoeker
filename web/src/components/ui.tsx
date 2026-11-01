@@ -3,13 +3,14 @@ import type { Provenance } from "@/lib/types";
 export const eur = (n: number | null | undefined, digits = 0) =>
   n == null ? "–" : n.toLocaleString("nl-NL", { style: "currency", currency: "EUR", maximumFractionDigits: digits, minimumFractionDigits: digits });
 
-export function Card({ title, subtitle, eyebrow, children, className = "", id }: { title?: string; subtitle?: string; eyebrow?: string; children: React.ReactNode; className?: string; id?: string }) {
+/** Glazen paneel. `light` koppelt het aan een keuringslicht (zie World.tsx): tijdens het lezen staat dat licht erachter. */
+export function Card({ title, subtitle, eyebrow, children, className = "", id, light }: { title?: string; subtitle?: string; eyebrow?: string; children: React.ReactNode; className?: string; id?: string; light?: string }) {
   return (
-    <section id={id} className={`surface rounded-xl p-5 sm:p-6 ${className}`}>
+    <section id={id} data-light={light} className={`surface p-5 sm:p-7 ${className}`}>
       {title && (
         <div className="mb-5 border-b border-line pb-4">
           {eyebrow && <div className="eyebrow mb-1">{eyebrow}</div>}
-          <h2 className="text-xl font-bold">{title}</h2>
+          <h2 className="text-xl font-semibold">{title}</h2>
           {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
         </div>
       )}
@@ -43,14 +44,14 @@ export function ScoreGauge({ score }: { score: number }) {
   return (
     <div role="img" aria-label={`Score ${score.toFixed(1)} van 10: ${scoreVerdict(score)}`} className="w-full">
       <div className="flex items-baseline gap-1">
-        <span className="font-display text-7xl font-extrabold leading-none tracking-tighter" style={{ color }}>{score.toFixed(1).replace(".", ",")}</span>
+        <span className="font-display text-7xl leading-none font-light tracking-[-0.05em]" style={{ color }}>{score.toFixed(1).replace(".", ",")}</span>
         <span className="num text-lg text-muted">/10</span>
       </div>
       <div className="mt-3 grid grid-cols-10 gap-1">
         {Array.from({ length: 10 }, (_, i) => {
           const fill = Math.max(0, Math.min(1, score - i));
           return (
-            <div key={i} className="h-2.5 overflow-hidden rounded-sm bg-line">
+            <div key={i} className="h-2 overflow-hidden rounded-full bg-line">
               <div className="h-full" style={{ width: `${fill * 100}%`, background: color }} />
             </div>
           );
@@ -88,8 +89,8 @@ export function PriceRange({ min, low, median, high, max, mark, fair }: { min: n
       <div className="relative mt-1.5 h-3 rounded-full bg-line">
         <div className="absolute inset-y-0 rounded-full" style={{ left: pos(low), width: `calc(${pos(high)} - ${pos(low)})`, background: "color-mix(in srgb, var(--brand) 35%, transparent)" }} />
         <div className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-brand" style={{ left: pos(median) }} />
-        {fair != null && <div title={`Eerlijke prijs ${eur(fair)}`} className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-2 border-good bg-card" style={{ left: pos(fair) }} />}
-        {mark != null && <div className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-card" style={{ left: pos(mark), background: markColor }} />}
+        {fair != null && <div title={`Eerlijke prijs ${eur(fair)}`} className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45 border-2 border-good bg-bg" style={{ left: pos(fair) }} />}
+        {mark != null && <div className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-bg" style={{ left: pos(mark), background: markColor }} />}
       </div>
       {mark != null && (
         <div className="relative mt-1.5 h-5">

@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { ParsedListing } from "@/app/api/parse-link/route";
 import { formatPlate, parseVehicleKey } from "@/lib/plate";
 
-const fieldCls = "mt-1.5 w-full rounded-md border border-line bg-bg px-3 py-2 font-sans text-sm normal-case tracking-normal text-fg";
+const fieldCls = "mt-1.5 w-full rounded-xl field-in px-3 py-2 font-sans text-sm normal-case tracking-normal text-fg";
 const isListingUrl = (s: string) => /^https?:\/\/\S*(marktplaats\.nl|autoscout24\.(nl|de))\//i.test(s.trim());
 
 export default function SearchForm({ compact = false }: { compact?: boolean }) {
@@ -68,7 +68,7 @@ export default function SearchForm({ compact = false }: { compact?: boolean }) {
               placeholder="https://www.marktplaats.nl/v/auto-s/…"
               className={`${fieldCls} mt-0 flex-1`}
             />
-            <button type="button" onClick={() => void readLink(link)} disabled={linkState.busy || !link} className="rounded-md border border-line px-3 font-sans text-sm normal-case tracking-normal text-fg hover:border-brand disabled:opacity-50">
+            <button type="button" onClick={() => void readLink(link)} disabled={linkState.busy || !link} className="well rounded-full px-4 font-sans text-sm font-semibold normal-case tracking-normal text-fg hover:text-brand disabled:opacity-50">
               {linkState.busy ? "Lezen…" : "Lees uit"}
             </button>
           </div>
@@ -81,12 +81,12 @@ export default function SearchForm({ compact = false }: { compact?: boolean }) {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Kenteken, bijv. G-001-BB"
+          placeholder="XX-123-X"
           aria-label="Kenteken of VIN"
-          className="plate w-full flex-1 px-4 py-3 text-center text-2xl placeholder:text-black/35 focus:outline-none focus:ring-4 focus:ring-brand/40"
+          className="plate w-full flex-1 px-4 py-3 text-center text-2xl placeholder:text-black/35 focus:outline-none focus:ring-4 focus:ring-plate/40"
           autoFocus={!compact}
         />
-        <button className="rounded-md bg-fg px-6 py-3 font-semibold text-bg transition hover:bg-brand hover:text-white">Check auto →</button>
+        <button className="btn-primary px-6 py-3">Check auto →</button>
       </div>
       {!compact && (
         <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">

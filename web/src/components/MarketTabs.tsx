@@ -16,14 +16,14 @@ interface Props {
   fair?: { mid: number; low: number; high: number; source: "NL" | "DE" } | null;
 }
 
-const fieldCls = "mt-1 w-full rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-fg";
+const fieldCls = "mt-1 w-full rounded-lg field-in px-2 py-1.5 text-sm text-fg";
 const SOURCE_NAMES: Record<string, string> = { marktplaats: "Marktplaats", autoscout24_nl: "AutoScout24.nl", autoscout24_de: "AutoScout24.de" };
 const TR_PLURAL: Record<TransmissionGroup, string> = { automaat: "automaten", handgeschakeld: "handgeschakelde auto's" };
 const TR_LABEL: Record<TransmissionGroup, string> = { automaat: "Automaat", handgeschakeld: "Handgeschakeld" };
 
 function GradeChip({ grade, confidence }: { grade: number; confidence: string }) {
   return (
-    <span className="num inline-grid h-10 w-10 flex-none place-items-center rounded-md text-sm font-semibold text-white" style={{ background: scoreColor(grade) }} title={`Cijfer ${grade.toFixed(1)} van 10 (zekerheid: ${confidence.toLowerCase()}, op basis van advertentiegegevens)`}>
+    <span className="num inline-grid h-10 w-10 flex-none place-items-center rounded-md text-sm font-semibold " style={{ background: scoreColor(grade), color: "var(--on-tone)" }} title={`Cijfer ${grade.toFixed(1)} van 10 (zekerheid: ${confidence.toLowerCase()}, op basis van advertentiegegevens)`}>
       {grade.toFixed(1)}
     </span>
   );
@@ -66,11 +66,11 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
   const defaultHref = `?${new URLSearchParams(own)}#markt`;
 
   return (
-    <Card eyebrow="Live markt" title="Marktvergelijking" subtitle="Live advertenties van Marktplaats en AutoScout24. De mediaan vraagprijs bepaalt het marktdeel van het cijfer.">
-      <div id="markt" role="tablist" className="mb-4 inline-flex scroll-mt-24 rounded-lg border border-line p-1">
+    <Card light="market" eyebrow="Live markt" title="Marktvergelijking" subtitle="Live advertenties van Marktplaats en AutoScout24. De mediaan vraagprijs bepaalt het marktdeel van het cijfer.">
+      <div id="markt" role="tablist" className="well mb-4 inline-flex scroll-mt-24 rounded-full p-1">
         {(["NL", "DE"] as const).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-            className={`rounded px-4 py-1.5 text-sm font-semibold ${tab === t ? "bg-fg text-bg" : "text-muted hover:text-fg"}`}>
+            className={`rounded-full px-4 py-1.5 text-sm font-semibold ${tab === t ? "bg-[var(--pressed)] text-fg shadow-[var(--glass-lip)]" : "text-muted hover:text-fg"}`}>
             {t === "NL" ? "🇳🇱 Nederland" : "🇩🇪 Duitsland"}
           </button>
         ))}
@@ -80,11 +80,11 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
 
       {market && !market.failed && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-lg border border-line bg-bg/40 p-4">
+          <div className="well p-4">
             <div className="eyebrow flex items-center gap-2">Mediaan vraagprijs live <ProvBadge p="verified" /></div>
             <BandBlock band={band} country={tab} askingPrice={askingPrice} what={what} fair={fair} />
           </div>
-          <div className="rounded-lg border border-line p-4 text-sm">
+          <div className="well p-4 text-sm">
             <div className="eyebrow">Waarmee is vergeleken</div>
             <ul className="mt-2 space-y-1">
               <li>Bouwjaar: <b>{f?.yearFrom || f?.yearTo ? `${f?.yearFrom ?? "…"} – ${f?.yearTo ?? "…"}` : "alle"}</b></li>
@@ -115,7 +115,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
       )}
 
       {tab === "DE" && importCost && (
-        <div className="mt-4 rounded-xl border border-line p-4">
+        <div className="mt-4 well p-4">
           <h3 className="font-semibold">Importkosten naar Nederland <ProvBadge p="estimate" /></h3>
           <table className="mt-2 w-full text-sm">
             <tbody>
@@ -137,7 +137,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
       )}
 
       {f && (
-        <form method="get" action="#markt" className="mt-6 rounded-xl border border-line p-4">
+        <form method="get" action="#markt" className="mt-6 well p-4">
           {Object.entries(own).map(([k, v]) => <input key={k} type="hidden" name={k} value={v} />)}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="font-semibold">Filter vergelijkbare auto&apos;s</h3>
@@ -201,7 +201,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
             </label>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <button className="rounded-md bg-fg px-4 py-2 text-sm font-semibold text-bg hover:bg-brand hover:text-white">Filter toepassen</button>
+            <button className="btn-primary px-4 py-2 text-sm">Filter toepassen</button>
             <span className="text-xs text-muted">Standaard: zelfde brandstof{transmission ? " en transmissie" : ""}, bouwjaar ±1, vermogen ±20%. Het cijfer wordt herberekend met de gefilterde auto&apos;s; let op dat een prijsfilter ook de mediaan beïnvloedt.</span>
           </div>
         </form>
@@ -246,7 +246,7 @@ export default function MarketTabs({ kenteken, market, importCost, links, asking
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
         <span className="text-muted">Zelf verder zoeken:</span>
-        {lk.map((l) => <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="rounded-lg border border-line px-3 py-1 font-medium text-brand hover:bg-brand-soft">{l.platform} ↗</a>)}
+        {lk.map((l) => <a key={l.url} href={l.url} target="_blank" rel="noopener noreferrer" className="well px-3 py-1 font-medium text-brand hover:bg-brand-soft">{l.platform} ↗</a>)}
         {tab === "DE" && <span className="text-xs text-muted">(mobile.de: nog geen automatische koppeling)</span>}
       </div>
       {market && !market.failed && <p className="mt-2 text-xs text-muted">Opgehaald {new Date(market.fetchedAt).toLocaleTimeString("nl-NL")}{market.cached ? " (cache, max. 30 min oud)" : ""}. Bronnen: marktplaats-py en de AutoScout24-techniek uit autoscout24_scraping; niet-officiële koppelingen die kunnen veranderen of worden geblokkeerd. Advertenties zonder bekend vermogen vallen weg als er op vermogen wordt gefilterd.</p>}

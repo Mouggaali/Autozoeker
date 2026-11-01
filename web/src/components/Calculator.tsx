@@ -15,7 +15,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
-const inputCls = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-fg";
+const inputCls = "w-full rounded-lg field-in px-3 py-2 text-fg";
 
 export default function Calculator({ facts, defaults }: { facts: OwnershipVehicleFacts; defaults: OwnershipInputs }) {
   const [i, setI] = useState<OwnershipInputs>(defaults);
@@ -24,7 +24,7 @@ export default function Calculator({ facts, defaults }: { facts: OwnershipVehicl
   const unit = facts.isElectric ? "kWh" : "liter";
 
   return (
-    <Card title="Maandelijkse kosten" subtitle="Pas de aannames aan; alle bedragen zijn indicatieve schattingen, berekend zonder AI.">
+    <Card light="costs" title="Maandelijkse kosten" subtitle="Pas de aannames aan; alle bedragen zijn indicatieve schattingen, berekend zonder AI.">
       <div className="grid gap-6 lg:grid-cols-5">
         <div className="grid gap-3 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-1 content-start">
           <Field label="Woonplaats">
@@ -51,7 +51,7 @@ export default function Calculator({ facts, defaults }: { facts: OwnershipVehicl
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={i.useCityParking} onChange={(e) => set("useCityParking", e.target.checked)} /> Vergunning in mijn stad meenemen</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={i.includeOptional.tires} onChange={(e) => set("includeOptional", { ...i.includeOptional, tires: e.target.checked })} /> Banden meenemen</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={i.includeOptional.wash} onChange={(e) => set("includeOptional", { ...i.includeOptional, wash: e.target.checked })} /> Wassen & verzorging</label>
-          <div className="rounded-lg border border-line p-3">
+          <div className="well p-3">
             <p className="mb-2 text-sm font-semibold">Financiering (optioneel)</p>
             <div className="grid grid-cols-3 gap-2">
               <Field label="Lening €"><NumberField className={inputCls} decimals={false} value={i.financingPrincipal} onValue={(n) => set("financingPrincipal", n)} placeholder="0" /></Field>
@@ -63,9 +63,9 @@ export default function Calculator({ facts, defaults }: { facts: OwnershipVehicl
 
         <div className="lg:col-span-3">
           <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="rounded-xl bg-brand-soft p-3"><div className="text-xs text-muted">Per maand</div><div className="text-2xl font-extrabold">{eur(r.perMonth)}</div></div>
-            <div className="rounded-xl bg-brand-soft p-3"><div className="text-xs text-muted">Per jaar</div><div className="text-2xl font-extrabold">{eur(r.perYear)}</div></div>
-            <div className="rounded-xl bg-brand-soft p-3"><div className="text-xs text-muted">Per km</div><div className="text-2xl font-extrabold">{eur(r.perKm, 2)}</div></div>
+            <div className="well p-3"><div className="text-xs text-muted">Per maand</div><div className="text-2xl font-extrabold">{eur(r.perMonth)}</div></div>
+            <div className="well p-3"><div className="text-xs text-muted">Per jaar</div><div className="text-2xl font-extrabold">{eur(r.perYear)}</div></div>
+            <div className="well p-3"><div className="text-xs text-muted">Per km</div><div className="text-2xl font-extrabold">{eur(r.perKm, 2)}</div></div>
           </div>
           <div className="mt-4 flex h-4 overflow-hidden rounded-full" role="img" aria-label="Verdeling kosten">
             {r.lines.map((l, idx) => <div key={l.id} title={`${l.label}: ${eur(l.perYear / 12)}/mnd`} style={{ width: `${(l.perYear / r.perYear) * 100}%`, background: COLORS[idx % COLORS.length] }} />)}

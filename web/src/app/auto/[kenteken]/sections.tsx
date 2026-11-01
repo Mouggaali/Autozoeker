@@ -3,6 +3,7 @@ import MarketTabs from "@/components/MarketTabs";
 import { Bar, Card, ProvBadge, ScoreGauge, eur, scoreColor, scoreVerdict } from "@/components/ui";
 import { ownershipFacts } from "@/lib/engines/ownership";
 import type { Report } from "@/lib/report";
+import { ScoreLights } from "@/components/World";
 
 /*
  * Delen van het rapport die op de live advertenties wachten. De pagina rendert eerst alles uit het RDW-register
@@ -22,6 +23,7 @@ export async function Verdict({ report }: P) {
   const ref = r.market?.reference;
   return (
     <>
+      <ScoreLights components={score.components.map((c) => ({ id: c.id, score: c.score }))} />
       <div>
         <div className="eyebrow mb-2">Eindoordeel</div>
         <ScoreGauge score={score.overall} />
@@ -29,7 +31,7 @@ export async function Verdict({ report }: P) {
         <div className="text-xs text-muted">Zekerheid: {score.confidenceLabel.toLowerCase()} ({Math.round(score.confidence * 100)}% van de weging onderbouwd)</div>
       </div>
       {ref && (
-        <a href="#markt" className="block rounded-lg border border-line bg-card p-3 text-sm hover:border-brand">
+        <a href="#markt" data-light-hover="market" className="row-hit well block p-3 text-sm">
           {r.fair && km ? (
             <>
               <div className="eyebrow">Eerlijke prijs voor {km.toLocaleString("nl-NL")} km</div>
@@ -80,7 +82,7 @@ export async function ScoreExplanation({ report }: P) {
     <Card title="Uitleg van de score" subtitle="Onderdelen zonder data tellen niet mee in het cijfer; ze verlagen alleen de zekerheid.">
       <div className="grid gap-4 md:grid-cols-2">
         {score.components.map((c) => (
-          <div key={c.id} className="rounded-lg border border-line bg-bg/40 p-4">
+          <div key={c.id} data-light-hover={c.id} tabIndex={0} className="row-hit well p-4 outline-none">
             <div className="flex items-baseline justify-between gap-2"><span className="font-semibold">{c.label}</span><span className="eyebrow whitespace-nowrap">weging {Math.round(c.weight * 100)}%</span></div>
             {c.score != null ? (<div className="mt-3 flex items-center gap-3"><div className="flex-1"><Bar value={c.score} /></div><b className="num text-lg" style={{ color: scoreColor(c.score) }}>{c.score.toFixed(1)}</b></div>) : <div className="mt-3"><ProvBadge p="unavailable" /> <span className="text-xs text-muted">niet beoordeeld</span></div>}
             <ul className="mt-2 list-disc pl-5 text-xs text-muted">{c.reasons.map((x) => <li key={x}>{x}</li>)}</ul>
@@ -93,9 +95,9 @@ export async function ScoreExplanation({ report }: P) {
   );
 }
 
-export function CardSkeleton({ title, note }: { title: string; note?: string }) {
+export function CardSkeleton({ title, note, light }: { title: string; note?: string; light?: string }) {
   return (
-    <Card title={title}>
+    <Card title={title} light={light}>
       <div aria-busy="true" className="space-y-3">
         <Pulse className="h-24" />
         <Pulse className="h-24" />

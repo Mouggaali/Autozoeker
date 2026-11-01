@@ -83,57 +83,57 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
   ];
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-8">
+    <div className="has-rail mx-auto max-w-6xl space-y-6 px-4 py-6">
       {/* Kop */}
-      <div className="surface rise grid overflow-hidden rounded-xl lg:grid-cols-[1fr_340px]">
+      <div className="surface rise grid lg:grid-cols-[1fr_340px]">
         <div className="p-5 sm:p-7">
           <div className="flex flex-wrap items-center gap-3">
             <span className="plate inline-block px-4 py-1 text-xl">{formatPlate(v.kenteken)}</span>
             <span className="eyebrow">Kentekenrapport · {new Date(bundle.fetchedAt).toLocaleDateString("nl-NL", { day: "numeric", month: "long", year: "numeric" })}</span>
           </div>
-          <h1 className="mt-4 text-4xl font-extrabold leading-none sm:text-5xl">{v.merk} <span className="text-muted">{v.model}</span></h1>
+          <h1 className="mt-5 text-[clamp(2.2rem,1.6rem+2.6vw,3.6rem)] leading-none font-semibold tracking-[-0.04em]">{v.merk} <span className="text-muted">{v.model}</span></h1>
           <dl className="mt-5 grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
             {specRow.map(([k, val]) => (
               <div key={k} className="min-w-0"><dt className="eyebrow">{k}</dt><dd className="num mt-0.5 text-sm font-medium break-all">{val ?? <span className="text-muted">–</span>}</dd></div>
             ))}
           </dl>
-          <div className="mt-5 flex flex-wrap gap-2 font-mono text-[11px] uppercase tracking-wider">
-            <span className="rounded bg-good-soft px-2 py-1 text-good">RDW live</span>
-            <span className="rounded bg-line px-2 py-1 text-muted">{loaded.cached ? "uit cache" : "zojuist opgehaald"}</span>
-            {v.apkVervaldatum && <span className={`rounded px-2 py-1 ${new Date(v.apkVervaldatum) < new Date() ? "bg-bad-soft text-bad" : "bg-brand-soft text-brand"}`}>APK t/m {fmt(v.apkVervaldatum)}</span>}
-            {bundle.odometer.verdict !== "Onbekend" && <span className={`rounded px-2 py-1 ${bundle.odometer.verdict === "Logisch" ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>Teller {bundle.odometer.verdict.toLowerCase()}</span>}
-            {r.issues.length > 0 && <a href="#aandachtspunten" className="rounded bg-warn-soft px-2 py-1 text-warn hover:underline">{r.issues.length} bekend{r.issues.length === 1 ? "" : "e"} aandachtspunt{r.issues.length === 1 ? "" : "en"}</a>}
+          <div className="mt-6 flex flex-wrap gap-2 text-[11px] font-semibold tracking-wider uppercase">
+            <span className="rounded-full bg-good-soft px-2.5 py-1 text-good">RDW live</span>
+            <span className="rounded-full bg-line px-2.5 py-1 text-muted">{loaded.cached ? "uit cache" : "zojuist opgehaald"}</span>
+            {v.apkVervaldatum && <span className={`rounded-full px-2.5 py-1 ${new Date(v.apkVervaldatum) < new Date() ? "bg-bad-soft text-bad" : "bg-brand-soft text-brand"}`}>APK t/m {fmt(v.apkVervaldatum)}</span>}
+            {bundle.odometer.verdict !== "Onbekend" && <span className={`rounded-full px-2.5 py-1 ${bundle.odometer.verdict === "Logisch" ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>Teller {bundle.odometer.verdict.toLowerCase()}</span>}
+            {r.issues.length > 0 && <a href="#aandachtspunten" className="rounded-full bg-warn-soft px-2.5 py-1 text-warn hover:underline">{r.issues.length} bekend{r.issues.length === 1 ? "" : "e"} aandachtspunt{r.issues.length === 1 ? "" : "en"}</a>}
           </div>
           <details className="mt-5 text-sm"><summary className="cursor-pointer font-medium text-brand">Vraagprijs, kilometerstand of transmissie aanpassen</summary>
             <form method="get" className="mt-3 flex flex-wrap gap-2">
-              <input name="prijs" defaultValue={price} placeholder="Vraagprijs €" inputMode="numeric" className="w-36 rounded-md border border-line bg-bg px-3 py-2" />
-              <input name="km" defaultValue={km} placeholder="Kilometerstand" inputMode="numeric" className="w-40 rounded-md border border-line bg-bg px-3 py-2" />
+              <input name="prijs" defaultValue={price} placeholder="Vraagprijs €" inputMode="numeric" className="w-36 rounded-xl field-in px-3 py-2" />
+              <input name="km" defaultValue={km} placeholder="Kilometerstand" inputMode="numeric" className="w-40 rounded-xl field-in px-3 py-2" />
               {!v.isElektrisch && (
-                <select name="transmissie" defaultValue={transmission ?? ""} aria-label="Transmissie" className="rounded-md border border-line bg-bg px-3 py-2">
+                <select name="transmissie" defaultValue={transmission ?? ""} aria-label="Transmissie" className="rounded-xl field-in px-3 py-2">
                   <option value="">Transmissie onbekend</option>
                   <option value="handgeschakeld">Handgeschakeld</option>
                   <option value="automaat">Automaat</option>
                 </select>
               )}
-              <button className="rounded-md bg-fg px-4 py-2 font-semibold text-bg hover:bg-brand hover:text-white">Herbereken</button>
+              <button className="btn-primary px-4 py-2">Herbereken</button>
             </form>
           </details>
         </div>
-        <div className="flex flex-col justify-between gap-5 border-t border-line bg-bg/60 p-5 sm:p-7 lg:border-t-0 lg:border-l">
+        <div data-light-home className="flex flex-col justify-between gap-5 border-t border-line p-5 sm:p-7 lg:border-t-0 lg:border-l">
           <Suspense fallback={<VerdictSkeleton />}><Verdict report={full} /></Suspense>
         </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card title="Samenvatting" className="lg:col-span-2"><SummaryBox query={summaryQuery} /></Card>
-        <Card title="Belangrijkste risico's"><Suspense fallback={<ListSkeleton />}><Risks report={full} /></Suspense></Card>
+        <Card id="deel-reliability" light="reliability" title="Belangrijkste risico's"><Suspense fallback={<ListSkeleton />}><Risks report={full} /></Suspense></Card>
       </div>
 
       {r.issues.length > 0 && (
-        <Card id="aandachtspunten" eyebrow="Motor & aandrijving" title="Bekende aandachtspunten" subtitle="Algemeen bekende zwakke plekken van deze motor of versnellingsbak. Geen vastgesteld defect aan deze auto, wel iets om te controleren.">
+        <Card id="aandachtspunten" light="reliability" eyebrow="Motor & aandrijving" title="Bekende aandachtspunten" subtitle="Algemeen bekende zwakke plekken van deze motor of versnellingsbak. Geen vastgesteld defect aan deze auto, wel iets om te controleren.">
           <ul className="grid gap-4 md:grid-cols-2">
             {r.issues.map((i) => (
-              <li key={i.id} className="rounded-lg border border-line bg-bg/40 p-4">
+              <li key={i.id} className="well p-4">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="font-semibold">{i.title}</h3>
                   <span className={`whitespace-nowrap rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider ${i.risk === "high" ? "bg-warn-soft text-warn" : "bg-line text-muted"}`}>{i.risk === "high" ? "veelvoorkomend" : "let op"}</span>
@@ -151,10 +151,10 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
       <Suspense fallback={<CardSkeleton title="Uitleg van de score" />}><ScoreExplanation report={full} /></Suspense>
 
       {/* Specificaties */}
-      <Card title="Technische specificaties" subtitle="Klik een categorie open">
+      <Card id="deel-value" light="value" title="Technische specificaties" subtitle="Klik een categorie open">
         <div className="space-y-2">
           {r.specs.map((cat, idx) => (
-            <details key={cat.id} open={idx === 0} className="group rounded-xl border border-line">
+            <details key={cat.id} open={idx === 0} className="group well">
               <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 font-semibold">
                 {cat.title}<span className="text-muted transition group-open:rotate-180">⌄</span>
               </summary>
@@ -171,7 +171,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         </div>
       </Card>
 
-      <Card title="Registratie- & houderhistorie" subtitle="Alleen wat RDW openbaar maakt: de eerste toelating, eerste en laatste tenaamstelling. Duur is berekend uit die datums.">
+      <Card id="deel-history" light="history" title="Registratie- & houderhistorie" subtitle="Alleen wat RDW openbaar maakt: de eerste toelating, eerste en laatste tenaamstelling. Duur is berekend uit die datums.">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-brand-soft p-3">
           <div>
             <div className="text-sm font-semibold">Aantal eigenaren</div>
@@ -184,7 +184,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         </div>
         <ol className="space-y-3">
           {reg.periods.map((p) => (
-            <li key={p.id} className="rounded-lg border border-line p-3">
+            <li key={p.id} className="well p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-sm font-semibold">{p.label}</span>
                 <span className="flex items-center gap-2"><span className="text-sm font-bold tabular-nums">{fmtDuration(p.days)}</span><ProvBadge p={p.provenance} /></span>
@@ -208,7 +208,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
 
       {/* Historie */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card title="Tijdlijn" subtitle="Gebeurtenissen uit het RDW-register">
+        <Card light="history" title="Tijdlijn" subtitle="Gebeurtenissen uit het RDW-register">
           <ol className="relative ml-2 border-l border-line">
             {r.timeline.map((e, i) => (
               <li key={i} className="mb-4 ml-4">
@@ -221,7 +221,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
           </ol>
         </Card>
         <div className="space-y-6">
-          <Card title="Kilometerstand" subtitle="Nationale Autopas via RDW">
+          <Card light="history" title="Kilometerstand" subtitle="Nationale Autopas via RDW">
             <p className="text-sm">{bundle.odometer.explanation}</p>
             {bundle.odometer.lastYear && <p className="mt-2 text-sm text-muted">Laatste registratie: {bundle.odometer.lastYear}. De werkelijke kilometerstanden zijn niet openbaar; vraag een NAP-rapport.</p>}
             <p className="mt-2 text-xs text-muted">Kilometerreeks/-grafiek: <ProvBadge p="unavailable" /></p>
@@ -240,7 +240,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         </div>
       </div>
 
-      <Card title="APK-historie" subtitle="Keuringsmeldingen en geconstateerde gebreken (RDW)">
+      <Card id="deel-inspection" light="inspection" title="APK-historie" subtitle="Keuringsmeldingen en geconstateerde gebreken (RDW)">
         {bundle.inspections.length === 0 ? <p className="text-sm text-muted">Geen APK-meldingen gevonden (de auto is mogelijk nog niet keuringsplichtig).</p> : (
           <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead className="text-left text-xs text-muted"><tr><th className="py-1">Datum</th><th>Type</th><th>Geldig tot</th><th>Gebreken</th></tr></thead>
@@ -252,17 +252,17 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         )}
       </Card>
 
-      <Suspense fallback={<CardSkeleton title="Marktvergelijking" note="Advertenties ophalen bij Marktplaats en AutoScout24…" />}><Market report={full} /></Suspense>
+      <div id="deel-market"><Suspense fallback={<CardSkeleton light="market" title="Marktvergelijking" note="Advertenties ophalen bij Marktplaats en AutoScout24…" />}><Market report={full} /></Suspense></div>
 
       {/* BPM */}
-      <Card title="BPM" subtitle="Aanschafbelasting: wat er werkelijk is betaald, volgens het RDW-register">
+      <Card id="deel-costs" light="costs" title="BPM" subtitle="Aanschafbelasting: wat er werkelijk is betaald, volgens het RDW-register">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="rounded-xl bg-brand-soft p-4">
+          <div className="well p-4">
             <div className="flex items-center gap-2 text-sm text-muted">Betaalde bruto BPM (eerste registratie) {r.bpm.paid != null ? <ProvBadge p="verified" /> : <ProvBadge p="unavailable" />}</div>
             <div className="mt-1 text-3xl font-extrabold">{r.bpm.paid != null ? eur(r.bpm.paid) : "–"}</div>
             <div className="text-xs text-muted">{r.bpm.paid != null ? `Vastgesteld bij eerste toelating in ${v.bouwjaar ?? "onbekend jaar"}, volgens de tarieven van dat jaar.` : "Niet geregistreerd in het kentekenregister."}</div>
           </div>
-          <div className="rounded-xl border border-line p-4">
+          <div className="well p-4">
             <div className="flex items-center gap-2 text-sm text-muted">Restant-BPM nu (indicatie) <ProvBadge p="estimate" /></div>
             <div className="mt-1 text-3xl font-extrabold">{r.bpm.paidRemaining != null ? eur(r.bpm.paidRemaining) : "–"}</div>
             <div className="text-xs text-muted">Betaalde BPM minus {Math.round(depreciationPct(r.bpm.ageMonths) * 100)}% afschrijving na {Math.round(r.bpm.ageMonths / 12 * 10) / 10} jaar; wat in de koopprijs &quot;zit&quot;.</div>
@@ -282,6 +282,12 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
       </Card>
 
       <Suspense fallback={<CardSkeleton title="Maandelijkse kosten" />}><Costs report={full} /></Suspense>
+
+      <section className="surface p-5 sm:p-7" data-sc-in>
+        <div className="eyebrow">Volgende auto</div>
+        <h2 className="mt-1 mb-4 text-xl font-semibold">Nog een kenteken checken</h2>
+        <SearchForm compact />
+      </section>
 
       <Card title="Bronnen & beperkingen">
         <ul className="space-y-1 text-sm">{r.sources.map((s) => <li key={s.id}>{s.url ? <a className="text-brand underline" href={s.url} target="_blank" rel="noopener noreferrer">{s.name}</a> : s.name}{s.note ? <span className="text-muted"> – {s.note}</span> : null}</li>)}</ul>
