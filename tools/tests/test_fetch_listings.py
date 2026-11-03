@@ -126,5 +126,13 @@ class TestParseAs24(unittest.TestCase):
         self.assertEqual(fl._parse_as24(html, "NL", "h", "aanbod", "P", "308", {}, seen), [])
 
 
+class TestListedAt(unittest.TestCase):
+    def test_date(self):
+        from datetime import date
+        self.assertEqual(fl.listed_at(date(2026, 10, 3)), "2026-10-03")
+        self.assertIsNone(fl.listed_at(None))
+        self.assertIsNone(fl.listed_at("gisteren"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -10,7 +10,7 @@ import { loadMarket, parseFilters } from "@/lib/market";
 import { formatPlate, parseVehicleKey } from "@/lib/plate";
 import { buildReport, loadBundle, parseInputs } from "@/lib/report";
 import { TRANSMISSION_LABEL } from "@/lib/transmission";
-import { CardSkeleton, Costs, ListSkeleton, Market, Risks, ScoreExplanation, Verdict, VerdictSkeleton } from "./sections";
+import { CardSkeleton, Costs, ListSkeleton, Market, Negotiate, Risks, ScoreExplanation, Verdict, VerdictSkeleton } from "./sections";
 
 const toneCls = { neutral: "bg-brand", good: "bg-good", warn: "bg-warn", bad: "bg-bad" } as const;
 const fmt = (d: string) => new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
@@ -70,6 +70,8 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
   const { askingPrice: price, mileage: km, transmission } = input;
   // Samenvatting met dezelfde invoer en vergelijkingsfilters als dit rapport
   const summaryQuery = new URLSearchParams({ ...Object.fromEntries(Object.keys(sp).map((k) => [k, get(k) ?? ""])), kenteken: v.kenteken }).toString();
+  // Eigen invoer meenemen naar checklist en vergelijking
+  const qs = new URLSearchParams(Object.fromEntries([["prijs", price], ["km", km], ["transmissie", transmission]].filter(([, x]) => x != null).map(([k, x]) => [k, String(x)]))).toString();
   const reg = registrationHistory(v);
   const specRow: [string, string | null][] = [
     ["Bouwjaar", v.bouwjaar ? String(v.bouwjaar) : null],
@@ -104,6 +106,10 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
             {bundle.odometer.verdict !== "Onbekend" && <span className={`rounded-full px-2.5 py-1 ${bundle.odometer.verdict === "Logisch" ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>Teller {bundle.odometer.verdict.toLowerCase()}</span>}
             {r.issues.length > 0 && <a href="#aandachtspunten" className="rounded-full bg-warn-soft px-2.5 py-1 text-warn hover:underline">{r.issues.length} bekend{r.issues.length === 1 ? "" : "e"} aandachtspunt{r.issues.length === 1 ? "" : "en"}</a>}
           </div>
+          <div className="mt-5 flex flex-wrap gap-2 text-sm">
+            <Link href={`/auto/${v.kenteken}/checklist${qs ? `?${qs}` : ""}`} className="well rounded-full px-4 py-2 font-semibold hover:text-brand">Bezichtigingschecklist →</Link>
+            <Link href={`/vergelijk?k=${v.kenteken},&prijs=${price ?? ""},&km=${km ?? ""},&transmissie=${transmission ?? ""},`} className="well rounded-full px-4 py-2 font-semibold hover:text-brand">Vergelijk met een andere auto →</Link>
+          </div>
           <details className="mt-5 text-sm"><summary className="cursor-pointer font-medium text-brand">Vraagprijs, kilometerstand of transmissie aanpassen</summary>
             <form method="get" className="mt-3 flex flex-wrap gap-2">
               <input name="prijs" defaultValue={price} placeholder="Vraagprijs €" inputMode="numeric" className="w-36 rounded-xl field-in px-3 py-2" />
@@ -128,6 +134,8 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         <Card title="Samenvatting" className="lg:col-span-2"><SummaryBox query={summaryQuery} /></Card>
         <Card id="deel-reliability" light="reliability" title="Belangrijkste risico's"><Suspense fallback={<ListSkeleton />}><Risks report={full} /></Suspense></Card>
       </div>
+
+      <Suspense fallback={null}><Negotiate report={full} /></Suspense>
 
       {r.issues.length > 0 && (
         <Card id="aandachtspunten" light="reliability" eyebrow="Motor & aandrijving" title="Bekende aandachtspunten" subtitle="Algemeen bekende zwakke plekken van deze motor of versnellingsbak. Geen vastgesteld defect aan deze auto, wel iets om te controleren.">

@@ -45,25 +45,38 @@ export function defaultFilters(v: Vehicle, transmission?: TransmissionGroup): Li
   };
 }
 
+/** Wat er gezocht wordt: merk en model zoals de RDW ze noemt (kentekenrapport) of zoals ingetypt (deal-finder). */
+export interface SearchSpec {
+  make: string;
+  model: string;
+  /** Standaard alle drie; de deal-finder zoekt alleen in Nederland */
+  sources?: ("marktplaats" | "autoscout24_nl" | "autoscout24_de")[];
+}
+export const specOf = (v: Vehicle): SearchSpec => ({ make: v.merk, model: v.model });
+
 // Lopende zoekopdrachten: de rapportpagina en /api/summary vragen vaak tegelijk hetzelfde op
 const inFlight = new Map<string, Promise<ListingsResult>>();
 
-export async function fetchListings(v: Vehicle, f: ListingFilters): Promise<ListingsResult> {
-  const key = [v.merk, v.model, f.yearFrom, f.yearTo, f.kmFrom, f.kmTo, f.body, f.fuel, f.transmission, f.pkFrom, f.pkTo, f.priceFrom, f.priceTo].join("-").toLowerCase().replace(/[^a-z0-9]+/g, "_");
+export async function fetchListings(spec: SearchSpec, f: ListingFilters): Promise<ListingsResult> {
+  const key = [spec.make, spec.model, ...(spec.sources ? [spec.sources.join("+")] : []), f.yearFrom, f.yearTo, f.kmFrom, f.kmTo, f.body, f.fuel, f.transmission, f.pkFrom, f.pkTo, f.priceFrom, f.priceTo].join("-").toLowerCase().replace(/[^a-z0-9]+/g, "_");
   const hit = await cacheGet<ListingsResult>(`listings:${key}`);
   if (hit) return { ...hit, cached: true };
   const running = inFlight.get(key);
   if (running) return running;
-  const p = scrape(v, f, key).finally(() => inFlight.delete(key));
+  const p = scrape(spec, f, key).finally(() => inFlight.delete(key));
   inFlight.set(key, p);
   return p;
 }
 
-async function scrape(v: Vehicle, f: ListingFilters, key: string): Promise<ListingsResult> {
+// Merken van meer woorden blijven heel; anders volstaat het eerste woord (RDW: "BMW I", "VOLKSWAGEN" e.d.)
+const MULTI_WORD = /^(alfa romeo|land rover|aston martin|lynk & co)(?![a-z])/i;
+const searchMake = (make: string) => MULTI_WORD.exec(make.trim())?.[1] ?? make.trim().split(" ")[0];
+
+async function scrape(spec: SearchSpec, f: ListingFilters, key: string): Promise<ListingsResult> {
   // RDW-handelsbenaming is vaak "I3" of "GOLF"; de eerste woorden volstaan voor het zoeken
-  const words = v.model.split(/\s+/);
+  const words = spec.model.trim().split(/\s+/);
   const model = (words[1] && /^(\d{1,2}|klasse|class|serie|series)$/i.test(words[1]) ? words.slice(0, 2) : words.slice(0, 1)).join(" ");
-  const raw = await runPythonTool<{ listings: Omit<Listing, "provenance">[]; errors: Record<string, string> }>("fetch_listings.py", { make: v.merk.split(" ")[0], model, limit: 12, year_from: f.yearFrom, year_to: f.yearTo, km_from: f.kmFrom, km_to: f.kmTo, body: f.body, fuel: f.fuel, transmission: f.transmission,
+  const raw = await runPythonTool<{ listings: Omit<Listing, "provenance">[]; errors: Record<string, string> }>("fetch_listings.py", { make: searchMake(spec.make), model, limit: 12, ...(spec.sources ? { sources: spec.sources } : {}), year_from: f.yearFrom, year_to: f.yearTo, km_from: f.kmFrom, km_to: f.kmTo, body: f.body, fuel: f.fuel, transmission: f.transmission,
     power_from: f.pkFrom ? Math.floor(f.pkFrom / KW_TO_PK) : null, power_to: f.pkTo ? Math.ceil(f.pkTo / KW_TO_PK) : null,
     price_from: f.priceFrom, price_to: f.priceTo });
   const result: ListingsResult = {

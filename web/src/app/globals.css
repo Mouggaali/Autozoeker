@@ -188,6 +188,8 @@ h1, h2, h3 {
   .btn-primary:active { transform: scale(0.97); }
   @media (hover: hover) and (pointer: fine) { .btn-primary:hover { filter: brightness(1.06); } }
 
+  /* Lijsten in een paneel: haarlijnen als inset-schaduw, geen randen */
+  .rows > * + * { box-shadow: inset 0 1px 0 var(--line); }
   .row-hit { border-radius: var(--r-inner); transition: background-color 160ms var(--sc-ease-out); }
   .row-hit.is-lit { background: var(--hover); box-shadow: var(--glass-lip); }
 }

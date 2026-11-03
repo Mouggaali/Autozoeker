@@ -121,6 +121,8 @@ export interface Listing {
   location: string | null;
   url: string;
   image?: string | null;
+  /** Plaatsings- of bijwerkdatum (YYYY-MM-DD), alleen Marktplaats */
+  listedAt?: string | null;
   provenance: Provenance;
 }
 

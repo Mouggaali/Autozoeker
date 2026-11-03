@@ -2,7 +2,7 @@ import { fitFairPrice } from "./engines/fairPrice";
 import { gradeListings } from "./engines/listingGrade";
 import type { MarketRef } from "./engines/score";
 import { estimateImport } from "./engines/valuation";
-import { defaultFilters, fetchListings } from "./providers/listings";
+import { defaultFilters, fetchListings, specOf } from "./providers/listings";
 import { TRANSMISSIONS } from "./transmission";
 import type { BodyGroup, FuelGroup, GradedListing, Listing, ListingFilters, PriceBand, RdwBundle, TransmissionGroup, Vehicle } from "./types";
 
@@ -50,7 +50,7 @@ const median = (xs: number[]) => {
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
 /** Kwantiel met lineaire interpolatie op een gesorteerde lijst. */
-const quantile = (sorted: number[], q: number) => {
+export const quantile = (sorted: number[], q: number) => {
   const i = (sorted.length - 1) * q;
   const lo = Math.floor(i);
   return sorted[lo] + (sorted[Math.ceil(i)] - sorted[lo]) * (i - lo);
@@ -154,7 +154,7 @@ export async function loadMarket(
 
   let raw: Awaited<ReturnType<typeof fetchListings>>;
   try {
-    raw = await fetchListings(v, filters);
+    raw = await fetchListings(specOf(v), filters);
   } catch (e) {
     return {
       listings: [], filters, nl: null, de: null, reference: null, comparedTransmission: null, importExtras,

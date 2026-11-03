@@ -232,9 +232,16 @@ def marktplaats(make: str, model: str, f: dict) -> list[dict]:
                 "url": l.link,
                 "image": (l.first_image.medium if l.first_image else None),
                 "noise": noise_reason(l.title, l.description),
+                # Plaatsings- of bijwerkdatum volgens Marktplaats (bij een "bump" schuift die op)
+                "listedAt": listed_at(getattr(l, "date", None)),
             }
         )
     return out
+
+
+def listed_at(d) -> str | None:
+    """datetime.date -> 'YYYY-MM-DD'; alles wat geen datum is -> None."""
+    return d.isoformat()[:10] if hasattr(d, "isoformat") else None
 
 
 # ----------------------------------------------------------------- AutoScout24

@@ -28,7 +28,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <span className="plate px-2 py-0.5 text-xs" style={{ borderLeftWidth: 10 }}>AZ</span>
             <span className="font-display text-[15px] font-semibold tracking-tight">AutoZoeker</span>
           </Link>
-          <span className="glass hidden px-4 py-2.5 text-xs font-medium text-muted sm:block" style={{ borderRadius: 999 }}>Onafhankelijk · RDW · live markt</span>
+          <nav aria-label="Hoofdmenu" className="glass flex gap-0.5 p-1 text-sm font-semibold" style={{ borderRadius: 999 }}>
+            <Link href="/zoeken" className="rounded-full px-3.5 py-1.5 text-muted hover:bg-[var(--hover)] hover:text-fg">Deals</Link>
+            <Link href="/vergelijk" className="rounded-full px-3.5 py-1.5 text-muted hover:bg-[var(--hover)] hover:text-fg">Vergelijk</Link>
+          </nav>
         </header>
         <div className="app flex min-h-full flex-col">
           <main className="flex-1 pt-[calc(72px+env(safe-area-inset-top))]">{children}</main>

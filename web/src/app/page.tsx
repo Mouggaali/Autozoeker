@@ -1,3 +1,4 @@
+import Link from "next/link";
 import SearchForm from "@/components/SearchForm";
 import { ProvBadge } from "@/components/ui";
 import { LIGHTS } from "@/lib/lights";
@@ -27,7 +28,11 @@ export default function Home() {
         </div>
         <div data-sc-parallax="-0.35">
           <div data-light-home className="surface rise p-5 sm:p-7" style={{ animationDelay: "90ms" }}>
-            <div className="eyebrow mb-3">Start je check</div>
+            <nav aria-label="Zoekwijze" className="well mb-5 inline-flex rounded-full p-1 text-sm font-semibold">
+              <span aria-current="page" className="rounded-full bg-[var(--pressed)] px-4 py-1.5 shadow-[var(--glass-lip)]">Op kenteken</span>
+              <Link href="/zoeken" className="rounded-full px-4 py-1.5 text-muted hover:text-fg">Op model</Link>
+              <Link href="/vergelijk" className="rounded-full px-4 py-1.5 text-muted hover:text-fg">Vergelijken</Link>
+            </nav>
             <SearchForm />
             <p className="mt-5 border-t border-line pt-4 text-xs text-muted">
               Proefkentekens: <b className="num text-fg">G-001-BB</b> (BMW i3), <b className="num text-fg">00-HVB-7</b> (VW Golf). Zoeken op VIN geeft beperkte resultaten; de RDW biedt geen VIN-opzoeking.

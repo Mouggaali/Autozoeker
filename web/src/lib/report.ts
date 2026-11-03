@@ -7,6 +7,7 @@ import { type MarketData, type Params, loadMarket, parseFilters } from "./market
 import { searchLinks } from "./providers/market";
 import { fetchRdw } from "./rdw";
 import { matchIssues } from "./knownIssues";
+import { negotiate } from "./engines/negotiation";
 import { buildSpecs, buildTimeline } from "./specs";
 import { effectiveTransmission, parseTransmission } from "./transmission";
 import type { RdwBundle, SourceRef, UserInputs } from "./types";
@@ -42,6 +43,17 @@ export function buildReport(bundle: RdwBundle, input: UserInputs, market: Market
   // Eerlijke prijs voor deze auto (bouwjaar + km), alleen met een geloofwaardig regressiemodel
   const fairRef = market?.reference?.model && input.mileage ? marketReference(market.reference, input.mileage, v.bouwjaar) : null;
   const fair = fairRef?.method === "model" ? { mid: fairRef.price, low: fairRef.low!, high: fairRef.high!, source: market!.reference!.source } : null;
+  const issues = matchIssues(v, input.transmission);
+  // Onderhandelen tegen de eerlijke prijs; zonder km tegen de mediaanband
+  const ref = market?.reference;
+  const negRef = fair ? { ...fair, kind: "fair" as const } : ref ? { mid: ref.median, low: ref.low, high: ref.high, kind: "median" as const } : null;
+  const negotiation = input.askingPrice && negRef
+    ? negotiate({
+        asking: input.askingPrice, ref: negRef, score: score.overall, issues, inspections: bundle.inspections,
+        apkExpires: v.apkVervaldatum, odometer: bundle.odometer.verdict,
+        listedAt: market?.listings.find((l) => l.sameAsReport)?.listedAt,
+      })
+    : null;
   return {
     bundle,
     specs: buildSpecs(bundle),
@@ -49,7 +61,8 @@ export function buildReport(bundle: RdwBundle, input: UserInputs, market: Market
     market,
     marketValue,
     fair,
-    issues: matchIssues(v, input.transmission),
+    issues,
+    negotiation,
     bpm,
     importCost,
     ownInputs,

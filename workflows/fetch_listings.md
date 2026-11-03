@@ -36,6 +36,9 @@ echo '{"make":"Volkswagen","model":"Golf","limit":12,"year_from":2015,"year_to":
 - **AutoScout24-zoekparameters:** `gear=M|A` (transmissie), `powerfrom`/`powerto` met `powertype=kw`, `pricefrom`/`priceto`, `fregfrom`/`fregto`, `kmfrom`/`kmto`, `fuel` (hybride = twee zoekopdrachten, codes `2` en `3`), `body`.
 - **AutoScout24-transmissie per advertentie** staat niet in de HTML-attributen, maar in de ingebedde JSON: `...-<guid>","vehicle":{...,"transmission":"Automatisch"}`. De detail-URL staat daar ook, meestal escaped als `/aanbod/...`.
 - **Regex in Python via shell-heredocs:** `\b` in een niet-raw string wordt een backspace-teken. Gebruik altijd raw strings (`r"..."`), en schrijf scripts liever via een bestand dan via een heredoc.
+- **Plaatsingsdatum (`listedAt`)** komt alleen van Marktplaats (`Listing.date` in de bibliotheek). Dat is de datum van plaatsing of de laatste "bump", dus nieuwe datums zeggen weinig. Het onderhandelingsadvies gebruikt het alleen boven 30 dagen. AutoScout24 geeft geen datum.
+- **Deal-finder (`/zoeken`, `web/src/lib/deals.ts`)** roept deze tool aan met `make`/`model` zoals ingetypt en `sources: ["marktplaats", "autoscout24_nl"]` (geen DE: zonder kenteken zijn er geen importkosten te berekenen). Daarna leest het voor maximaal 5 advertenties de detailpagina via `tools/parse_listing_url.py`, om het kenteken te vinden (24 uur gecachet als `plate:<url>`). Houd die 5 aan om het volume laag te houden.
+- **Merken van meer woorden** ("Alfa Romeo", "Land Rover") gaan heel naar de tool. Van RDW-namen wordt alleen het eerste woord gebruikt (`searchMake` in `providers/listings.ts`).
 - **Het Render-IP kan worden geblokkeerd.** Komt een bron structureel met 0 resultaten of met fouten terug, test dan lokaal en vergelijk met de live `/api/listings?kenteken=...`.
 
 ## Tests

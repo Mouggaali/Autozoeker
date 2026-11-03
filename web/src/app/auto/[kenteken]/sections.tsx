@@ -1,4 +1,5 @@
 import Calculator from "@/components/Calculator";
+import CopyButton from "@/components/CopyButton";
 import MarketTabs from "@/components/MarketTabs";
 import { Bar, Card, ProvBadge, ScoreGauge, eur, scoreColor, scoreVerdict } from "@/components/ui";
 import { ownershipFacts } from "@/lib/engines/ownership";
@@ -119,5 +120,50 @@ export async function Costs({ report }: P) {
       {r.marketValue == null && <p className="rounded-lg bg-warn-soft p-3 text-sm text-warn">Er zijn te weinig vergelijkbare advertenties voor een marktwaarde. Voor verzekering en waardevermindering is een generieke referentiewaarde van € {r.ownInputs.currentValue.toLocaleString("nl-NL")} gebruikt, gebaseerd op leeftijd. Pas de kosten daarom niet te letterlijk toe.</p>}
       <Calculator facts={ownershipFacts(r.bundle.vehicle)} defaults={r.ownInputs} />
     </>
+  );
+}
+
+export async function Negotiate({ report }: P) {
+  const r = await report;
+  const n = r.negotiation;
+  if (!r.market?.reference) return null;
+  if (!n) {
+    return (
+      <Card light="market" eyebrow="Onderhandelen" title="Wat kun je bieden?">
+        <p className="text-sm text-muted">Vul bovenaan de vraagprijs in (en liefst de kilometerstand); dan rekenen we een openingsbod en een maximumprijs uit, met de argumenten die bij deze auto gelden.</p>
+      </Card>
+    );
+  }
+  const kind = r.fair ? "de eerlijke prijs voor deze km-stand" : "de mediaan van vergelijkbare auto's";
+  return (
+    <Card light="market" eyebrow="Onderhandelen" title="Wat kun je bieden?" subtitle={`Gebaseerd op ${kind}, de bekende aandachtspunten en de RDW-gegevens. Indicatief; jij beslist.`}>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="well p-4">
+          <div className="eyebrow">Openingsbod</div>
+          <div className="num mt-1 text-3xl font-semibold text-good">{eur(n.open)}</div>
+          {n.deduction > 0 && <div className="mt-1 text-xs text-muted">incl. {eur(n.deduction)} verwachte reparaties</div>}
+        </div>
+        <div className="well p-4">
+          <div className="eyebrow">Maximaal betalen</div>
+          <div className="num mt-1 text-3xl font-semibold">{eur(n.walkAway)}</div>
+          <div className="mt-1 text-xs text-muted">daarboven: laten gaan</div>
+        </div>
+        <div className="well p-4">
+          <div className="eyebrow">Vraagprijs</div>
+          <div className="num mt-1 text-3xl font-semibold text-muted">{eur(r.input.askingPrice)}</div>
+          {r.input.askingPrice! > n.walkAway && <div className="mt-1 text-xs text-warn">{eur(r.input.askingPrice! - n.walkAway)} boven je maximum</div>}
+        </div>
+      </div>
+      {n.arguments.length > 0 && (
+        <>
+          <h3 className="mt-5 font-semibold">Argumenten voor het gesprek</h3>
+          <ul className="rows mt-2">{n.arguments.map((a) => <li key={a.text} className="py-2.5 text-sm">{a.text}</li>)}</ul>
+        </>
+      )}
+      <div className="well mt-4 flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm"><span className="eyebrow mr-2">Openingszin</span>{n.opener}</p>
+        <CopyButton text={n.opener} />
+      </div>
+    </Card>
   );
 }
