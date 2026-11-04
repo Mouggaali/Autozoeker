@@ -1,4 +1,5 @@
 import type { KnownIssue } from "../knownIssues";
+import type { KmVerdict } from "./kmNorm";
 import type { Inspection, OdometerInfo } from "../types";
 
 /**
@@ -19,6 +20,8 @@ export interface NegotiationInput {
   /** Schade-signalen uit de RDW (lib/damage.ts) */
   blocked?: boolean;
   imported?: boolean;
+  /** Kilometerstand tegenover het CBS-gemiddelde */
+  km?: KmVerdict | null;
   now?: Date;
 }
 
@@ -69,6 +72,9 @@ export function negotiate(i: NegotiationInput): Negotiation | null {
 
   if (i.odometer === "Onlogisch") args.push({ text: "De RDW beoordeelt de tellerstand als onlogisch. Zonder sluitende verklaring is dat een reden om af te haken of fors te zakken." });
 
+  if (i.km && (i.km.level === "hoog" || i.km.level === "zeer hoog")) {
+    args.push({ text: `De auto heeft bovengemiddeld veel gereden: ${i.km.perYear.toLocaleString("nl-NL")} km per jaar, tegen gemiddeld ${i.km.expectedPerYear.toLocaleString("nl-NL")} voor deze leeftijd en brandstof (CBS). Dat betekent meer slijtage.` });
+  }
   if (i.blocked) args.push({ text: "Het kenteken kan niet op naam worden gezet (blokkade, mogelijk schade of WOK-status). Niet kopen voordat dit is opgelost." });
   if (i.imported) args.push({ text: "Het is een importauto: de buitenlandse schadehistorie is onbekend. Vraag om papieren of een historierapport, of reken een risico-marge." });
 

@@ -1,5 +1,6 @@
 import Calculator from "@/components/Calculator";
 import CopyButton from "@/components/CopyButton";
+import { MILIEUZONE_CHECK_URL, MILIEUZONE_PEILDATUM } from "@/lib/milieuzones";
 import MarketTabs from "@/components/MarketTabs";
 import { Bar, Card, ProvBadge, ScoreGauge, eur, scoreColor, scoreVerdict } from "@/components/ui";
 import { ownershipFacts } from "@/lib/engines/ownership";
@@ -117,6 +118,12 @@ export async function Costs({ report }: P) {
   const r = await report;
   return (
     <>
+      {r.milieuzone.diesel && (
+        <p className={`rounded-2xl p-3 text-sm ${r.milieuzone.denied.length ? "bg-warn-soft text-warn" : "well"}`}>
+          {r.milieuzone.summary} <a href={MILIEUZONE_CHECK_URL} target="_blank" rel="noopener noreferrer" className="font-semibold underline">Kentekencheck milieuzones.nl ↗</a>
+          <span className="mt-1 block text-xs opacity-80">Regels volgens milieuzones.nl op {MILIEUZONE_PEILDATUM}; gemeenten kunnen ze aanpassen.</span>
+        </p>
+      )}
       {r.marketValue == null && <p className="rounded-lg bg-warn-soft p-3 text-sm text-warn">Er zijn te weinig vergelijkbare advertenties voor een marktwaarde. Voor verzekering en waardevermindering is een generieke referentiewaarde van € {r.ownInputs.currentValue.toLocaleString("nl-NL")} gebruikt, gebaseerd op leeftijd. Pas de kosten daarom niet te letterlijk toe.</p>}
       <Calculator facts={ownershipFacts(r.bundle.vehicle)} defaults={r.ownInputs} />
     </>

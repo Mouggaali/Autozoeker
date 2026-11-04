@@ -9,6 +9,10 @@ import { fetchRdw } from "./rdw";
 import { matchIssues } from "./knownIssues";
 import { negotiate } from "./engines/negotiation";
 import { canRegister, importInfo } from "./damage";
+import { kmVerdict } from "./engines/kmNorm";
+import { fuelPricesNow, kmNormsNow } from "./liveData";
+import { milieuzoneAccess } from "./milieuzones";
+import { refreshCbs } from "./providers/cbs";
 import { buildSpecs, buildTimeline } from "./specs";
 import { effectiveTransmission, parseTransmission } from "./transmission";
 import type { RdwBundle, SourceRef, UserInputs } from "./types";
@@ -16,7 +20,13 @@ import type { RdwBundle, SourceRef, UserInputs } from "./types";
 /** RDW-snapshots 12 uur cachen (Upstash als ingesteld, anders bestand; zie lib/cache.ts). */
 const TTL_S = 12 * 60 * 60;
 
+/** RDW-snapshot plus (parallel) de CBS-referentiedata die de rekenkernen gebruiken. */
 export async function loadBundle(kenteken: string): Promise<{ bundle: RdwBundle; cached: boolean } | null> {
+  const [res] = await Promise.all([loadRdw(kenteken), refreshCbs()]);
+  return res;
+}
+
+async function loadRdw(kenteken: string): Promise<{ bundle: RdwBundle; cached: boolean } | null> {
   const hit = await cacheGet<RdwBundle>(`rdw:${kenteken}`);
   if (hit) return { bundle: hit, cached: true };
   const bundle = await fetchRdw(kenteken);
@@ -45,6 +55,7 @@ export function buildReport(bundle: RdwBundle, input: UserInputs, market: Market
   const fairRef = market?.reference?.model && input.mileage ? marketReference(market.reference, input.mileage, v.bouwjaar) : null;
   const fair = fairRef?.method === "model" ? { mid: fairRef.price, low: fairRef.low!, high: fairRef.high!, source: market!.reference!.source } : null;
   const issues = matchIssues(v, input.transmission);
+  const km = input.mileage ? kmVerdict(v, input.mileage, kmNormsNow()) : null;
   // Onderhandelen tegen de eerlijke prijs; zonder km tegen de mediaanband
   const ref = market?.reference;
   const negRef = fair ? { ...fair, kind: "fair" as const } : ref ? { mid: ref.median, low: ref.low, high: ref.high, kind: "median" as const } : null;
@@ -53,7 +64,7 @@ export function buildReport(bundle: RdwBundle, input: UserInputs, market: Market
         asking: input.askingPrice, ref: negRef, score: score.overall, issues, inspections: bundle.inspections,
         apkExpires: v.apkVervaldatum, odometer: bundle.odometer.verdict,
         listedAt: market?.listings.find((l) => l.sameAsReport)?.listedAt,
-        blocked: canRegister(v) === false, imported: !!importInfo(v)?.imported,
+        blocked: canRegister(v) === false, imported: !!importInfo(v)?.imported, km,
       })
     : null;
   return {
@@ -65,6 +76,10 @@ export function buildReport(bundle: RdwBundle, input: UserInputs, market: Market
     fair,
     issues,
     negotiation,
+    km,
+    kmNormPeriod: kmNormsNow().period,
+    fuelPrices: fuelPricesNow(),
+    milieuzone: milieuzoneAccess(bundle),
     bpm,
     importCost,
     ownInputs,

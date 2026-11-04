@@ -109,6 +109,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
             {v.apkVervaldatum && <span className={`rounded-full px-2.5 py-1 ${new Date(v.apkVervaldatum) < new Date() ? "bg-bad-soft text-bad" : "bg-brand-soft text-brand"}`}>APK t/m {fmt(v.apkVervaldatum)}</span>}
             {bundle.odometer.verdict !== "Onbekend" && <span className={`rounded-full px-2.5 py-1 ${bundle.odometer.verdict === "Logisch" ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>Teller {bundle.odometer.verdict.toLowerCase()}</span>}
             {damage.find((d) => d.id === "register")?.status === "bad" && <span className="rounded-full bg-bad-soft px-2.5 py-1 text-bad">Kenteken geblokkeerd</span>}
+            {r.milieuzone.denied.length > 0 && <a href="#deel-costs" title={r.milieuzone.summary} className="rounded-full bg-warn-soft px-2.5 py-1 text-warn hover:underline">Milieuzone: niet in {r.milieuzone.denied.join(", ")}</a>}
             {damage.find((d) => d.id === "import")?.status === "warn" && <span className="rounded-full bg-warn-soft px-2.5 py-1 text-warn">Import</span>}
             {r.issues.length > 0 && <a href="#aandachtspunten" className="rounded-full bg-warn-soft px-2.5 py-1 text-warn hover:underline">{r.issues.length} bekend{r.issues.length === 1 ? "" : "e"} aandachtspunt{r.issues.length === 1 ? "" : "en"}</a>}
           </div>
@@ -237,6 +238,19 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
         <div className="space-y-6">
           <Card light="history" title="Kilometerstand" subtitle="Nationale Autopas via RDW">
             <p className="text-sm">{bundle.odometer.explanation}</p>
+            {r.km ? (
+              <div className="well mt-3 p-3">
+                <div className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className="font-semibold">Tegenover het gemiddelde</span>
+                  <span className={`font-semibold ${r.km.level === "normaal" ? "text-good" : r.km.level === "laag" ? "text-muted" : "text-warn"}`}>{r.km.level === "normaal" ? "normaal gereden" : r.km.level === "laag" ? "weinig gereden" : r.km.level === "hoog" ? "veel gereden" : "zeer veel gereden"}</span>
+                </div>
+                <div className="relative mt-3 h-2 rounded-full bg-line" role="img" aria-label={`${Math.round(r.km.ratio * 100)}% van het gemiddelde`}>
+                  <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${Math.min(100, (r.km.ratio / 2) * 100)}%`, background: r.km.level === "normaal" ? "var(--good)" : r.km.level === "laag" ? "var(--muted)" : "var(--warn)" }} />
+                  <div className="absolute -inset-y-1 left-1/2 w-0.5 rounded bg-fg" title="CBS-gemiddelde" />
+                </div>
+                <p className="num mt-2 text-xs text-muted">{r.km.perYear.toLocaleString("nl-NL")} km/jaar · gemiddeld {r.km.expectedPerYear.toLocaleString("nl-NL")} km/jaar voor een particuliere {r.km.fuel === "lpg" ? "lpg-auto" : r.km.fuel} van deze leeftijd (CBS {r.kmNormPeriod}). Streep = gemiddelde.</p>
+              </div>
+            ) : !km && <p className="mt-2 text-xs text-muted">Vul de kilometerstand in om die te vergelijken met het CBS-gemiddelde voor deze leeftijd en brandstof.</p>}
             {bundle.odometer.lastYear && <p className="mt-2 text-sm text-muted">Laatste registratie: {bundle.odometer.lastYear}. De werkelijke kilometerstanden zijn niet openbaar; vraag een NAP-rapport.</p>}
             <p className="mt-2 text-xs text-muted">Kilometerreeks/-grafiek: <ProvBadge p="unavailable" /></p>
           </Card>

@@ -1,4 +1,5 @@
 import { canRegister, importInfo } from "./damage";
+import { milieuzoneAccess } from "./milieuzones";
 import type { KnownIssue } from "./knownIssues";
 import type { RdwBundle, TransmissionGroup } from "./types";
 
@@ -28,6 +29,8 @@ export function buildChecklist(input: {
     .forEach((r) => own.push({ id: `recall-${r.code}`, text: `Laat bij de dealer bevestigen dat terugroepactie ${r.code} is uitgevoerd.`, why: r.status }));
   if (canRegister(v) === false) own.push({ id: "blocked", text: "Laat zien waarom het kenteken niet op naam kan (RDW-papieren, schadekeuringsrapport). Zonder oplossing niet kopen.", why: "RDW: tenaamstellen niet mogelijk" });
   if (importInfo(v)?.imported) own.push({ id: "import", text: "Vraag de buitenlandse registratiepapieren en onderhoudshistorie; overweeg een historierapport (carVertical, AutoDNA).", why: "Importauto: buitenlandse schade onbekend" });
+  const mz = milieuzoneAccess(bundle);
+  if (mz.denied.length) own.push({ id: "milieuzone", text: `Rijd je in ${mz.denied.join(", ").replace(/, ([^,]*)$/, " of $1")}? Daar mag deze diesel de milieuzone niet in; check het op milieuzones.nl.`, why: mz.summary });
   if (v.taxi) own.push({ id: "taxi", text: "Ex-taxi: let extra op slijtage van stoelen, stuur, koppeling of bak en vraag de onderhoudshistorie.", why: "RDW: taxi-indicator" });
   if (bundle.odometer.verdict === "Onlogisch") own.push({ id: "odo", text: "Vraag een verklaring en het NAP-rapport voor de onlogische tellerstand; vergelijk met de onderhoudshistorie.", why: "RDW-telleroordeel: onlogisch" });
   checks.forEach((c, i) => {

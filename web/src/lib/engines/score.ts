@@ -1,6 +1,9 @@
 import type { PriceBand, RdwBundle, ScoreComponent, ScoreResult, UserInputs } from "../types";
 import { type FairPriceModel, fairPrice, kmEffect } from "./fairPrice";
 import { canRegister, importInfo } from "../damage";
+import { kmNormsNow } from "../liveData";
+import { milieuzoneAccess } from "../milieuzones";
+import { kmVerdict } from "./kmNorm";
 import { matchIssues } from "../knownIssues";
 import type { OwnershipResult } from "./ownership";
 
@@ -75,6 +78,21 @@ export function calcScore(
       reasons.push("Kenteken kan niet op naam worden gezet (blokkade).");
       risks.push({ level: "high", text: "Het kenteken kan niet op naam worden gezet. Dat kan door schade (WOK-status), diefstal, export of sloop komen. Koop niet tot dit is opgelost." });
       checks.push("Laat de verkoper aantonen waarom tenaamstellen geblokkeerd is (RDW-papieren, schadekeuringsrapport).");
+    }
+    // Kilometerstand tegenover het CBS-gemiddelde voor deze brandstof en leeftijd
+    const kmv = input.mileage ? kmVerdict(v, input.mileage, kmNormsNow()) : null;
+    if (kmv) {
+      const fuelName = kmv.fuel === "lpg" ? "lpg-auto" : kmv.fuel;
+      const line = `${kmv.perYear.toLocaleString("nl-NL")} km/jaar; gemiddeld ${kmv.expectedPerYear.toLocaleString("nl-NL")} voor een particuliere ${fuelName} van deze leeftijd (CBS).`;
+      if (kmv.level === "zeer hoog" || kmv.level === "hoog") {
+        const pen = kmv.level === "zeer hoog" ? 1.5 : 0.7;
+        s = s == null ? null : clamp(s - pen);
+        reasons.push(`Veel gereden: ${line}`);
+        risks.push({ level: kmv.level === "zeer hoog" ? "medium" : "low", text: `Bovengemiddeld veel kilometers: ${line} Meer slijtage aan motor, koppeling/bak en ophanging.` });
+      } else if (kmv.level === "laag") {
+        reasons.push(`Weinig gereden: ${line}`);
+        checks.push("Weinig kilometers voor de leeftijd: laat de NAP-tellerrapportage en onderhoudsfacturen met km-standen zien.");
+      } else reasons.push(`Normaal gereden: ${line}`);
     }
     const imp = importInfo(v);
     if (imp?.imported) {
@@ -194,6 +212,12 @@ export function calcScore(
       s = clamp(6 + (expected - retained) * 12);
       reasons.push(`Vraagprijs is ${(retained * 100).toFixed(0)}% van de catalogusprijs (verwacht ≈ ${(expected * 100).toFixed(0)}%).`);
     } else reasons.push("Uitrustingsdata en vraagprijs ontbreken; niet beoordeeld.");
+    const mz = milieuzoneAccess(b);
+    if (mz.denied.length) {
+      if (s != null) s = clamp(s - 0.5);
+      reasons.push(`${mz.summary} Dat drukt de restwaarde en het aantal kopers.`);
+      risks.push({ level: "low", text: `Milieuzone: ${mz.summary.charAt(0).toLowerCase()}${mz.summary.slice(1)}` });
+    }
     comps.push({ id: "value", label: "Uitrusting & waarde voor geld", weight: 0.1, score: s, reasons });
   }
 

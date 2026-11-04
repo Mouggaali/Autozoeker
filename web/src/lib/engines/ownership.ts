@@ -1,3 +1,4 @@
+import { fuelPricesNow } from "../liveData";
 import type { Vehicle } from "../types";
 import { CITIES, DEFAULT_CITY } from "./cities";
 
@@ -56,7 +57,11 @@ export function ownershipFacts(v: Vehicle): OwnershipVehicleFacts {
   };
 }
 
-export const DEFAULT_FUEL_PRICE = { benzine: 2.1, diesel: 1.85, elektrisch: 0.32, hybride: 2.1 } as const;
+/** Standaardprijs per brandstof: actuele CBS-pompprijs (hybride rekent met benzine), stroom vast per kWh. */
+export function defaultFuelPrice(fuelType: OwnershipVehicleFacts["fuelType"]): number {
+  const p = fuelPricesNow();
+  return fuelType === "diesel" ? p.diesel : fuelType === "elektrisch" ? p.elektrisch : p.benzine;
+}
 
 const MRB_PETROL: [number, number][] = [
   [600, 100], [800, 180], [1000, 290], [1200, 420], [1500, 640], [1800, 880], [2200, 1250], [3000, 2000],
@@ -87,7 +92,7 @@ export function defaultInputs(v: Vehicle, currentValue: number | null): Ownershi
   return {
     city: DEFAULT_CITY,
     kmPerYear: 15000,
-    fuelPrice: DEFAULT_FUEL_PRICE[f.fuelType],
+    fuelPrice: Math.round(defaultFuelPrice(f.fuelType) * 100) / 100,
     insurance: f.ageYears > 8 ? "wa-beperkt" : "allrisk",
     extraParkingPerMonth: 0,
     useCityParking: false,
@@ -115,7 +120,7 @@ export function calcOwnership(f: OwnershipVehicleFacts, i: OwnershipInputs): Own
     id: "fuel",
     label: f.isElectric ? "Elektriciteit" : "Brandstof",
     perYear: (km / 100) * f.consumption * i.fuelPrice,
-    note: `${f.consumption.toFixed(1)} ${f.isElectric ? "kWh" : "l"}/100 km × ${i.fuelPrice.toFixed(2)} €/${f.isElectric ? "kWh" : "l"} (fabrieksverbruik; praktijk is vaak 10–25% hoger).`,
+    note: `${f.consumption.toFixed(1)} ${f.isElectric ? "kWh" : "l"}/100 km × ${i.fuelPrice.toFixed(2)} €/${f.isElectric ? "kWh" : "l"} (fabrieksverbruik; praktijk is vaak 10–25% hoger).${!f.isElectric && Math.abs(i.fuelPrice - defaultFuelPrice(f.fuelType)) < 0.006 ? ` Gemiddelde pompprijs volgens het CBS van ${new Date(fuelPricesNow().date).toLocaleDateString("nl-NL", { day: "numeric", month: "long" })}.` : ""}`,
   });
 
   const rate = { wa: 0.016, "wa-beperkt": 0.027, allrisk: 0.043 }[i.insurance];
