@@ -8,6 +8,7 @@ import { searchLinks } from "./providers/market";
 import { fetchRdw } from "./rdw";
 import { matchIssues } from "./knownIssues";
 import { negotiate } from "./engines/negotiation";
+import { canRegister, importInfo } from "./damage";
 import { buildSpecs, buildTimeline } from "./specs";
 import { effectiveTransmission, parseTransmission } from "./transmission";
 import type { RdwBundle, SourceRef, UserInputs } from "./types";
@@ -52,6 +53,7 @@ export function buildReport(bundle: RdwBundle, input: UserInputs, market: Market
         asking: input.askingPrice, ref: negRef, score: score.overall, issues, inspections: bundle.inspections,
         apkExpires: v.apkVervaldatum, odometer: bundle.odometer.verdict,
         listedAt: market?.listings.find((l) => l.sameAsReport)?.listedAt,
+        blocked: canRegister(v) === false, imported: !!importInfo(v)?.imported,
       })
     : null;
   return {

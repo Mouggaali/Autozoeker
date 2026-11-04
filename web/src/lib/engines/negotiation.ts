@@ -16,6 +16,9 @@ export interface NegotiationInput {
   odometer: OdometerInfo["verdict"];
   /** Datum waarop de advertentie (volgens het platform) online kwam of is bijgewerkt */
   listedAt?: string | null;
+  /** Schade-signalen uit de RDW (lib/damage.ts) */
+  blocked?: boolean;
+  imported?: boolean;
   now?: Date;
 }
 
@@ -65,6 +68,9 @@ export function negotiate(i: NegotiationInput): Negotiation | null {
   }
 
   if (i.odometer === "Onlogisch") args.push({ text: "De RDW beoordeelt de tellerstand als onlogisch. Zonder sluitende verklaring is dat een reden om af te haken of fors te zakken." });
+
+  if (i.blocked) args.push({ text: "Het kenteken kan niet op naam worden gezet (blokkade, mogelijk schade of WOK-status). Niet kopen voordat dit is opgelost." });
+  if (i.imported) args.push({ text: "Het is een importauto: de buitenlandse schadehistorie is onbekend. Vraag om papieren of een historierapport, of reken een risico-marge." });
 
   if (i.listedAt) {
     const days = Math.floor((now.getTime() - new Date(i.listedAt).getTime()) / DAY);

@@ -1,5 +1,6 @@
 import type { PriceBand, RdwBundle, ScoreComponent, ScoreResult, UserInputs } from "../types";
 import { type FairPriceModel, fairPrice, kmEffect } from "./fairPrice";
+import { canRegister, importInfo } from "../damage";
 import { matchIssues } from "../knownIssues";
 import type { OwnershipResult } from "./ownership";
 
@@ -67,6 +68,19 @@ export function calcScore(
       if (v.taxi) { s -= 1.5; reasons.push("Voertuig is (eerder) als taxi geregistreerd: hoge slijtage."); risks.push({ level: "medium", text: "Taxi-indicator: waarschijnlijk veel kilometers en intensief gebruik." }); }
       if (v.wamVerzekerd === false) { s -= 1; reasons.push("Niet WAM-verzekerd volgens RDW."); }
       s = clamp(s);
+    }
+    // Schade-signalen uit de RDW (de schadehistorie zelf is niet openbaar)
+    if (canRegister(v) === false) {
+      s = s == null ? 2 : clamp(s - 4);
+      reasons.push("Kenteken kan niet op naam worden gezet (blokkade).");
+      risks.push({ level: "high", text: "Het kenteken kan niet op naam worden gezet. Dat kan door schade (WOK-status), diefstal, export of sloop komen. Koop niet tot dit is opgelost." });
+      checks.push("Laat de verkoper aantonen waarom tenaamstellen geblokkeerd is (RDW-papieren, schadekeuringsrapport).");
+    }
+    const imp = importInfo(v);
+    if (imp?.imported) {
+      reasons.push("Geïmporteerd: schade uit het buitenland is niet bekend.");
+      risks.push({ level: "medium", text: "Importauto: de buitenlandse schade- en kilometerhistorie is niet openbaar. Een historierapport (bijv. carVertical, AutoDNA) bevat ook buitenlandse data." });
+      checks.push("Vraag bij een importauto naar de buitenlandse papieren en overweeg een betaald historierapport.");
     }
     comps.push({ id: "history", label: "Historie & kilometerstand", weight: 0.2, score: s, reasons });
     checks.push("Vraag een kilometerrapport (NAP/Carvertical) en onderhoudsboekje met stempels op.");

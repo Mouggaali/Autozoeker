@@ -10,8 +10,11 @@ import { loadMarket, parseFilters } from "@/lib/market";
 import { formatPlate, parseVehicleKey } from "@/lib/plate";
 import { buildReport, loadBundle, parseInputs } from "@/lib/report";
 import { TRANSMISSION_LABEL } from "@/lib/transmission";
+import { HISTORY_PROVIDERS, damageSignals } from "@/lib/damage";
 import { CardSkeleton, Costs, ListSkeleton, Market, Negotiate, Risks, ScoreExplanation, Verdict, VerdictSkeleton } from "./sections";
 
+const DAMAGE_CLS = { ok: "bg-good-soft text-good", warn: "bg-warn-soft text-warn", bad: "bg-bad-soft text-bad", unknown: "bg-line text-muted" } as const;
+const DAMAGE_LABEL = { ok: "in orde", warn: "let op", bad: "blokkade", unknown: "onbekend" } as const;
 const toneCls = { neutral: "bg-brand", good: "bg-good", warn: "bg-warn", bad: "bg-bad" } as const;
 const fmt = (d: string) => new Date(d).toLocaleDateString("nl-NL", { day: "numeric", month: "short", year: "numeric" });
 
@@ -72,6 +75,7 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
   const summaryQuery = new URLSearchParams({ ...Object.fromEntries(Object.keys(sp).map((k) => [k, get(k) ?? ""])), kenteken: v.kenteken }).toString();
   // Eigen invoer meenemen naar checklist en vergelijking
   const qs = new URLSearchParams(Object.fromEntries([["prijs", price], ["km", km], ["transmissie", transmission]].filter(([, x]) => x != null).map(([k, x]) => [k, String(x)]))).toString();
+  const damage = damageSignals(v);
   const reg = registrationHistory(v);
   const specRow: [string, string | null][] = [
     ["Bouwjaar", v.bouwjaar ? String(v.bouwjaar) : null],
@@ -104,6 +108,8 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
             <span className="rounded-full bg-line px-2.5 py-1 text-muted">{loaded.cached ? "uit cache" : "zojuist opgehaald"}</span>
             {v.apkVervaldatum && <span className={`rounded-full px-2.5 py-1 ${new Date(v.apkVervaldatum) < new Date() ? "bg-bad-soft text-bad" : "bg-brand-soft text-brand"}`}>APK t/m {fmt(v.apkVervaldatum)}</span>}
             {bundle.odometer.verdict !== "Onbekend" && <span className={`rounded-full px-2.5 py-1 ${bundle.odometer.verdict === "Logisch" ? "bg-good-soft text-good" : "bg-bad-soft text-bad"}`}>Teller {bundle.odometer.verdict.toLowerCase()}</span>}
+            {damage.find((d) => d.id === "register")?.status === "bad" && <span className="rounded-full bg-bad-soft px-2.5 py-1 text-bad">Kenteken geblokkeerd</span>}
+            {damage.find((d) => d.id === "import")?.status === "warn" && <span className="rounded-full bg-warn-soft px-2.5 py-1 text-warn">Import</span>}
             {r.issues.length > 0 && <a href="#aandachtspunten" className="rounded-full bg-warn-soft px-2.5 py-1 text-warn hover:underline">{r.issues.length} bekend{r.issues.length === 1 ? "" : "e"} aandachtspunt{r.issues.length === 1 ? "" : "en"}</a>}
           </div>
           <div className="mt-5 flex flex-wrap gap-2 text-sm">
@@ -239,12 +245,6 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
               <ul className="space-y-1 text-sm">{bundle.recalls.map((x) => <li key={x.code} className="flex justify-between gap-2"><span>{x.code}</span><span className={x.statusCode === "P" || x.statusCode === "R" ? "text-good" : "text-bad"}>{x.status}</span></li>)}</ul>
             )}
           </Card>
-          <Card title="Schade, eigenaren & advertentiehistorie">
-            <ul className="space-y-1 text-sm">
-              {["Schade- en ongevalhistorie", "Eerdere houders (aantal en periode)", "Historische advertenties en prijswijzigingen"].map((t) => <li key={t} className="flex items-center justify-between gap-2">{t}<ProvBadge p="unavailable" /></li>)}
-            </ul>
-            <p className="mt-2 text-xs text-muted">Niet openbaar. Beschikbaar via gelicentieerde providers (Carvertical, AutoDNA e.d.); zie docs/DATA_SOURCES.md.</p>
-          </Card>
         </div>
       </div>
 
@@ -258,6 +258,30 @@ export default async function ReportPage({ params, searchParams }: PageProps<"/a
                 <td>{i.defects.length === 0 ? <span className="text-good">Geen</span> : <ul className="list-disc pl-4">{i.defects.map((d, k) => <li key={k}>{d.description} <span className="text-xs text-muted">({d.code}{d.count > 1 ? `, ${d.count}×` : ""})</span></li>)}</ul>}</td>
               </tr>))}</tbody></table></div>
         )}
+      </Card>
+
+      <Card light="inspection" eyebrow="Schade" title="Schadecheck" subtitle="Wat de RDW openbaar maakt over blokkades en herkomst. De schadehistorie zelf (verzekeraars, schadeherstellers) is niet openbaar.">
+        <ul className="rows">
+          {damage.map((d) => (
+            <li key={d.id} className="flex flex-wrap items-start justify-between gap-x-4 gap-y-1 py-2.5">
+              <div className="min-w-0 flex-1"><div className="text-sm font-semibold">{d.label}</div><div className="text-xs text-muted">{d.text}</div></div>
+              <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase ${DAMAGE_CLS[d.status]}`}>{DAMAGE_LABEL[d.status]}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="well mt-4 p-4">
+          <div className="text-sm font-semibold">Volledige schadehistorie</div>
+          <p className="mt-1 text-xs text-muted">
+            Schademeldingen, eerdere taxaties en buitenlandse historie zijn alleen te koop per rapport. Zinvol bij een importauto, een prijs ver onder de markt of twijfel over de lak of naden.
+            {damage.some((d) => d.status === "bad" || d.status === "warn") && <b className="text-warn"> Bij deze auto is dat aan te raden.</b>}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {HISTORY_PROVIDERS.map((h) => (
+              <a key={h.name} href={h.url} target="_blank" rel="noopener noreferrer" title={h.note} className="well rounded-full px-3.5 py-1.5 text-sm font-semibold hover:text-brand">{h.name} ↗</a>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted">Betaalde diensten van derden; AutoZoeker ontvangt hiervoor niets. Vul daar het kenteken <b className="num">{formatPlate(v.kenteken)}</b> in.</p>
+        </div>
       </Card>
 
       <div id="deel-market"><Suspense fallback={<CardSkeleton light="market" title="Marktvergelijking" note="Advertenties ophalen bij Marktplaats en AutoScout24…" />}><Market report={full} /></Suspense></div>

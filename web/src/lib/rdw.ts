@@ -133,6 +133,7 @@ export async function fetchRdw(kenteken: string): Promise<RdwBundle | null> {
     cilinders: num(v.aantal_cilinders),
     exportIndicator: yn(v.export_indicator),
     taxi: yn(v.taxi_indicator),
+    tenaamstellenMogelijk: yn(v.tenaamstellen_mogelijk),
     wamVerzekerd: yn(v.wam_verzekerd),
     openRecall: yn(v.openstaande_terugroepactie_indicator),
     raw: v,

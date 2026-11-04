@@ -2,6 +2,7 @@ import { cacheGet, cacheSet } from "./cache";
 import { calcOwnership, defaultInputs, ownershipFacts } from "./engines/ownership";
 import { type FairPriceModel, fairPrice, fitFairPrice } from "./engines/fairPrice";
 import { calcScore, type MarketRef } from "./engines/score";
+import { canRegister, importInfo } from "./damage";
 import { matchIssues } from "./knownIssues";
 import { cleanPeers, priceBand, quantile } from "./market";
 import { fetchListings } from "./providers/listings";
@@ -33,6 +34,8 @@ export interface PlateCheck {
   odometer: string;
   issues: string[];
   apkExpires: string | null;
+  blocked: boolean;
+  imported: boolean;
 }
 
 export interface Deal extends Listing {
@@ -106,6 +109,8 @@ async function checkDeal(d: Deal, ref: MarketRef | null): Promise<PlateCheck | {
       odometer: b.odometer.verdict,
       issues: matchIssues(v, transmission).map((x) => x.title),
       apkExpires: v.apkVervaldatum,
+      blocked: canRegister(v) === false,
+      imported: !!importInfo(v)?.imported,
     };
   } catch {
     return { error: "check mislukt" };

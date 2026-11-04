@@ -152,6 +152,8 @@ function DealRow({ d, rank }: { d: Deal; rank: number }) {
               <span className="rounded-full px-2 py-0.5 font-semibold" style={{ background: "var(--well)", color: scoreColor(c.score) }}>cijfer {c.score.toFixed(1).replace(".", ",")}</span>
               {c.apkDefects > 0 && <span className="rounded-full bg-warn-soft px-2 py-0.5 text-warn">{c.apkDefects} APK-gebrek{c.apkDefects === 1 ? "" : "en"}</span>}
               {c.openRecalls > 0 && <span className="rounded-full bg-bad-soft px-2 py-0.5 text-bad">{c.openRecalls} open terugroepactie{c.openRecalls === 1 ? "" : "s"}</span>}
+              {c.blocked && <span className="rounded-full bg-bad-soft px-2 py-0.5 font-semibold text-bad">kenteken geblokkeerd</span>}
+              {c.imported && <span className="rounded-full bg-warn-soft px-2 py-0.5 text-warn">import</span>}
               {c.odometer === "Onlogisch" && <span className="rounded-full bg-bad-soft px-2 py-0.5 text-bad">teller onlogisch</span>}
               {c.issues.map((x) => <span key={x} className="rounded-full bg-warn-soft px-2 py-0.5 text-warn">{x}</span>)}
               <Link href={reportHref!} className="font-semibold text-brand hover:underline">Volledig rapport →</Link>

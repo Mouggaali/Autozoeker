@@ -51,6 +51,8 @@ export interface Vehicle {
   cilinders: number | null;
   exportIndicator: boolean | null;
   taxi: boolean | null;
+  /** RDW "tenaamstellen_mogelijk"; ontbreekt in oudere snapshots */
+  tenaamstellenMogelijk?: boolean | null;
   wamVerzekerd: boolean | null;
   openRecall: boolean | null;
   raw: Record<string, unknown>;
